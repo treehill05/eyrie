@@ -3,16 +3,11 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Log from "./_components/log";
 import Video from "./_components/video";
 import Graph from "./_components/graph";
 
-export default async function Page({
-	params,
-}: {
-	params: Promise<{ drone_id: string }>;
-}) {
+export default async function Page() {
 	return (
 		<ResizablePanelGroup
 			direction="horizontal"
