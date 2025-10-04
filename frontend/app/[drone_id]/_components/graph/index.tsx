@@ -17,6 +17,40 @@ import type { DetectionData } from "../rtc/types";
 
 const isUsingMockData = false;
 
+// Calculate density using Gaussian kernel between positions
+// Higher density = more clustered people
+const calculateDensity = (
+	positions: DetectionData["positions"],
+	sigma = 0.15,
+): number => {
+	if (positions.length === 0) return 0;
+	if (positions.length === 1) return 1;
+
+	let densitySum = 0;
+	const n = positions.length;
+
+	// Calculate pairwise Gaussian kernel values
+	for (let i = 0; i < n; i++) {
+		for (let j = i + 1; j < n; j++) {
+			const pos1 = positions[i];
+			const pos2 = positions[j];
+
+			// Use normalized coordinates for consistent scale (0-1)
+			const dx = pos1.normalized_x - pos2.normalized_x;
+			const dy = pos1.normalized_y - pos2.normalized_y;
+			const distSq = dx * dx + dy * dy;
+
+			// Gaussian kernel: exp(-d^2 / (2*sigma^2))
+			const kernelValue = Math.exp(-distSq / (2 * sigma * sigma));
+			densitySum += kernelValue;
+		}
+	}
+
+	// Normalize by number of pairs
+	const numPairs = (n * (n - 1)) / 2;
+	return densitySum / numPairs;
+};
+
 // Mock data generator for testing
 const generateMockData = (): DetectionData[] => {
 	const startTime = Date.now();
@@ -69,13 +103,16 @@ export default function Graph() {
 		// Get the first timestamp to calculate relative time
 		const startTime = displayData[0].timestamp;
 
-		return displayData.map((data, index) => ({
-			index,
-			time: ((data.timestamp - startTime) / 1000).toFixed(1), // Convert to seconds
-			totalPersons: data.total_persons,
-			avgConfidence: (data.average_confidence * 100).toFixed(1), // Convert to percentage
-			timestamp: data.timestamp,
-		}));
+		return displayData.map((data, index) => {
+			const density = calculateDensity(data.positions);
+			return {
+				index,
+				time: ((data.timestamp - startTime) / 1000).toFixed(1), // Convert to seconds
+				totalPersons: data.total_persons,
+				density: Number((density * 100).toFixed(1)), // Scale to 0-100 for better visualization
+				timestamp: data.timestamp,
+			};
+		});
 	}, [displayData]);
 
 	// Calculate statistics
@@ -84,7 +121,7 @@ export default function Graph() {
 			return {
 				maxPersons: 0,
 				avgPersons: 0,
-				avgConfidence: 0,
+				avgDensity: 0,
 			};
 		}
 
@@ -92,14 +129,16 @@ export default function Graph() {
 		const avgPersons =
 			displayData.reduce((acc, d) => acc + d.total_persons, 0) /
 			displayData.length;
-		const avgConfidence =
-			displayData.reduce((acc, d) => acc + d.average_confidence, 0) /
-			displayData.length;
+
+		// Calculate average density across all time points
+		const densities = displayData.map((d) => calculateDensity(d.positions));
+		const avgDensity =
+			densities.reduce((acc, d) => acc + d, 0) / densities.length;
 
 		return {
 			maxPersons,
 			avgPersons: avgPersons.toFixed(1),
-			avgConfidence: (avgConfidence * 100).toFixed(1),
+			avgDensity: (avgDensity * 100).toFixed(1), // Scale to 0-100
 		};
 	}, [displayData]);
 
@@ -158,10 +197,10 @@ export default function Graph() {
 				</div>
 				<div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-lg p-3">
 					<p className="text-xs text-muted-foreground font-medium">
-						Avg Confidence
+						Avg Density
 					</p>
 					<p className="text-2xl font-bold text-emerald-500">
-						{stats.avgConfidence}%
+						{stats.avgDensity}
 					</p>
 				</div>
 			</div>
@@ -214,10 +253,10 @@ export default function Graph() {
 				</ResponsiveContainer>
 			</div>
 
-			{/* Confidence Over Time */}
+			{/* Density Over Time */}
 			<div className="flex-1 min-h-0">
 				<h3 className="text-sm font-semibold mb-2">
-					Detection Confidence Over Time
+					Spatial Density Over Time
 				</h3>
 				<ResponsiveContainer width="100%" height="100%">
 					<LineChart
@@ -243,16 +282,16 @@ export default function Graph() {
 								fontSize: "12px",
 							}}
 							labelFormatter={(value) => `Time: ${value}s`}
-							formatter={(value: number) => [`${value}%`, "Confidence"]}
+							formatter={(value: number) => [value.toFixed(1), "Density"]}
 						/>
 						<Line
 							type="monotone"
-							dataKey="avgConfidence"
+							dataKey="density"
 							stroke="#10b981"
 							strokeWidth={2}
 							dot={{ fill: "#10b981", r: 3 }}
 							activeDot={{ r: 5 }}
-							name="Avg Confidence"
+							name="Spatial Density"
 						/>
 					</LineChart>
 				</ResponsiveContainer>
