@@ -1,3 +1,8 @@
-export default function Page({ params }: { params: { drone_id: string } }) {
-	return <div>Drone {params.drone_id}</div>;
+export default async function Page({
+	params,
+}: {
+	params: Promise<{ drone_id: string }>;
+}) {
+	const { drone_id } = await params;
+	return <div>Drone {drone_id}</div>;
 }
