@@ -125,7 +125,7 @@ def main():
         uvicorn.run(
             "rtc_server:app",
             host=config.BACKEND_HOST,
-            port=config.BACKEND_PORT,
+            port=config.RTC_PORT,
             reload=True,
             log_level="info"
         )
