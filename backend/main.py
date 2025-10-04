@@ -14,6 +14,7 @@ from io import BytesIO
 from PIL import Image
 
 from person_detector import PersonDetector
+import config  # Import centralized configuration
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ app = FastAPI(title="Person Detection API", version="1.0.0")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -367,8 +368,8 @@ async def start_video_processing():
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=config.BACKEND_HOST,
+        port=config.BACKEND_PORT,
         reload=True,
         log_level="info"
     )
