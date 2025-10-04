@@ -3,23 +3,18 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Log from "./_components/log";
 import Video from "./_components/video";
 import Graph from "./_components/graph";
 
-export default async function Page({
-	params,
-}: {
-	params: Promise<{ drone_id: string }>;
-}) {
+export default async function Page() {
 	return (
 		<ResizablePanelGroup
-			direction="vertical"
+			direction="horizontal"
 			className="min-h-screen rounded-lg min-w-screen"
 		>
 			<ResizablePanel defaultSize={70}>
-				<ResizablePanelGroup direction="horizontal">
+				<ResizablePanelGroup direction="vertical">
 					<ResizablePanel defaultSize={60}>
 						<Video />
 					</ResizablePanel>
