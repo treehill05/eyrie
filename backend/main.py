@@ -14,6 +14,7 @@ from io import BytesIO
 from PIL import Image
 
 from person_detector import PersonDetector
+import config  # Import centralized configuration
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ app = FastAPI(title="Person Detection API", version="1.0.0")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,23 +89,9 @@ async def startup_event():
         
         logger.info("Person detection system initialized successfully")
         
-        # Try to initialize camera automatically
-        try:
-            video_capture = cv2.VideoCapture(0)
-            if video_capture.isOpened():
-                # Test if we can read a frame
-                ret, frame = video_capture.read()
-                if ret and frame is not None:
-                    is_streaming = True
-                    logger.info("Camera initialized automatically on startup")
-                else:
-                    video_capture.release()
-                    video_capture = None
-                    logger.warning("Camera opened but failed to read frame")
-            else:
-                logger.warning("Failed to open camera automatically")
-        except Exception as e:
-            logger.warning(f"Failed to initialize camera automatically: {e}")
+        # Camera is NOT initialized automatically on startup
+        # Use /start_camera endpoint to manually activate the camera
+        logger.info("Camera ready - use /start_camera endpoint to activate")
             
     except Exception as e:
         logger.error(f"Failed to initialize detector: {e}")
@@ -381,8 +368,8 @@ async def start_video_processing():
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=config.BACKEND_HOST,
+        port=config.BACKEND_PORT,
         reload=True,
         log_level="info"
     )

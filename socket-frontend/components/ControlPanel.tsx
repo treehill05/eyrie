@@ -5,8 +5,11 @@ import React, { useState } from "react";
 interface ControlPanelProps {
   onStartCamera: () => void;
   onStopCamera: () => void;
+  onStartRTC: () => void;
+  onStopRTC: () => void;
   onUploadImage: (file: File) => void;
   isStreaming: boolean;
+  isRTCStreaming: boolean;
   isConnected: boolean;
   className?: string;
 }
@@ -14,8 +17,11 @@ interface ControlPanelProps {
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   onStartCamera,
   onStopCamera,
+  onStartRTC,
+  onStopRTC,
   onUploadImage,
   isStreaming,
+  isRTCStreaming,
   isConnected,
   className = "",
 }) => {
@@ -57,16 +63,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </div>
       </div>
 
-      {/* Camera Controls */}
-      <div className="space-y-4">
-        <h3 className="font-medium text-gray-700">Camera Controls</h3>
+      {/* Device Camera Controls */}
+      <div className="space-y-4 pb-4 border-b">
+        <h3 className="font-medium text-gray-700">📷 Device Camera (Port 8000)</h3>
 
         <div className="flex space-x-3">
           <button
             onClick={onStartCamera}
-            disabled={isStreaming}
+            disabled={isStreaming || isRTCStreaming}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              isStreaming
+              isStreaming || isRTCStreaming
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-blue-600 text-white hover:bg-blue-700"
             }`}
@@ -91,6 +97,45 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="flex items-center space-x-2 text-green-600">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-sm">Camera is streaming</span>
+          </div>
+        )}
+      </div>
+
+      {/* RTC Video Stream Controls */}
+      <div className="space-y-4 pt-4">
+        <h3 className="font-medium text-gray-700">🎥 RTC Video Stream (Port 8001)</h3>
+        <p className="text-xs text-gray-500">Streams video file with person detection</p>
+
+        <div className="flex space-x-3">
+          <button
+            onClick={onStartRTC}
+            disabled={isRTCStreaming || isStreaming}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              isRTCStreaming || isStreaming
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-purple-600 text-white hover:bg-purple-700"
+            }`}
+          >
+            Start RTC Stream
+          </button>
+
+          <button
+            onClick={onStopRTC}
+            disabled={!isRTCStreaming}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              !isRTCStreaming
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-red-600 text-white hover:bg-red-700"
+            }`}
+          >
+            Stop RTC
+          </button>
+        </div>
+
+        {isRTCStreaming && (
+          <div className="flex items-center space-x-2 text-purple-600">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+            <span className="text-sm">RTC video is streaming</span>
           </div>
         )}
       </div>
