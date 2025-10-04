@@ -1,4 +1,7 @@
-INFO:     Started server process [15139]
+INFO:     Will watch for changes in these directories: ['/Users/gabrielfagundes/Desktop/Crowd Project/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [43164] using WatchFiles
+INFO:     Started server process [43167]
 INFO:     Waiting for application startup.
 WARNING:main:Custom model not found at Model/best_person_detection.pt, using pre-trained YOLOv8n
 INFO:person_detector:Model loaded successfully from yolov8n.pt
@@ -7,23 +10,17 @@ INFO:main:Camera ready - use /start_camera endpoint to activate
 INFO:main:Starting video processing task
 INFO:main:Starting video processing loop
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     ('127.0.0.1', 56620) - "WebSocket /ws" [accepted]
+INFO:     ('127.0.0.1', 57170) - "WebSocket /ws" [accepted]
 INFO:main:Client connected. Total connections: 1
 INFO:     connection open
-INFO:     ('127.0.0.1', 56624) - "WebSocket /ws" [accepted]
+INFO:     ('127.0.0.1', 57181) - "WebSocket /ws" [accepted]
 INFO:main:Client connected. Total connections: 2
 INFO:     connection open
-INFO:     ('127.0.0.1', 56626) - "WebSocket /ws" [accepted]
+INFO:     ('127.0.0.1', 57182) - "WebSocket /ws" [accepted]
 INFO:main:Client connected. Total connections: 3
 INFO:     connection open
-✓ Loaded configuration from: /Users/gabrielfagundes/Desktop/Crowd Project/backend/.env
-INFO:     127.0.0.1:56628 - "GET /health HTTP/1.1" 200 OK
-INFO:     ('127.0.0.1', 56632) - "WebSocket /ws" [accepted]
+INFO:     ('127.0.0.1', 57183) - "WebSocket /ws" [accepted]
 INFO:main:Client connected. Total connections: 4
 INFO:     connection open
-INFO:     ('127.0.0.1', 56634) - "WebSocket /ws" [accepted]
-INFO:main:Client connected. Total connections: 5
-INFO:     connection open
-INFO:main:Client disconnected. Total connections: 4
-INFO:     connection closed
+✓ Loaded configuration from: /Users/gabrielfagundes/Desktop/Crowd Project/backend/.env
+INFO:     127.0.0.1:57187 - "GET /health HTTP/1.1" 200 OK
