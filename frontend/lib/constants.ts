@@ -31,3 +31,5 @@ export const DATA_POINTS = [
 	{ x: 400, y: 720 },
 	{ x: 50, y: 50 },
 ];
+
+export const DISPLAY_OPTIONS = ["heatmap", "points", "none"] as const;

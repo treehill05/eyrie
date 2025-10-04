@@ -22,16 +22,16 @@ export default function VideoPoints() {
 
 	return (
 		<div
-			className="absolute z-10"
+			className="absolute z-10 bg-black/50"
 			style={{ width: elementWidth, height: elementHeight }}
 		>
 			{DATA_POINTS.map((point, index) => (
 				<div
 					key={index}
-					className="absolute w-3 h-3 bg-white rounded-full border-2 border-red-500"
+					className="absolute w-3 h-3 bg-white rounded-full"
 					style={{
-						left: calculateXPosition(point.x),
-						top: calculateYPosition(point.y),
+						left: calculateXPosition(point.x) - 4,
+						top: calculateYPosition(point.y) - 4,
 					}}
 				/>
 			))}

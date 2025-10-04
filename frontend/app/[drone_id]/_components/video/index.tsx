@@ -2,12 +2,18 @@
 
 import { useEffect, useRef } from "react";
 import { useVideo } from "./provider";
-import VideoMask from "./mask";
 import VideoPoints from "./points";
+import VideoHeatmap from "./heatmap";
+import DisplaySwitch from "./display-switch";
 
 export default function Video() {
-	const { setVideoWidth, setVideoHeight, setElementWidth, setElementHeight } =
-		useVideo();
+	const {
+		setVideoWidth,
+		setVideoHeight,
+		setElementWidth,
+		setElementHeight,
+		display,
+	} = useVideo();
 	const videoRef = useRef<HTMLVideoElement>(null);
 
 	useEffect(() => {
@@ -65,7 +71,10 @@ export default function Video() {
 				className="w-full"
 			/>
 
-			<VideoPoints />
+			{display === "heatmap" && <VideoHeatmap />}
+			{display === "points" && <VideoPoints />}
+
+			<DisplaySwitch />
 		</div>
 	);
 }

@@ -1,16 +1,19 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import type { DisplayOption } from "./types";
 
 interface IVideoContext {
 	videoWidth: number;
 	videoHeight: number;
 	elementWidth: number;
 	elementHeight: number;
+	display: DisplayOption;
 	setVideoWidth: (width: number) => void;
 	setVideoHeight: (height: number) => void;
 	setElementWidth: (width: number) => void;
 	setElementHeight: (height: number) => void;
+	setDisplay: (display: DisplayOption) => void;
 }
 
 const VideoContext = createContext<IVideoContext>({} as IVideoContext);
@@ -32,6 +35,7 @@ export default function VideoProvider({
 	const [videoHeight, setVideoHeight] = useState(0);
 	const [elementWidth, setElementWidth] = useState(0);
 	const [elementHeight, setElementHeight] = useState(0);
+	const [display, setDisplay] = useState<DisplayOption>("none");
 
 	useEffect(() => {
 		if (videoWidth && videoHeight) {
@@ -46,10 +50,12 @@ export default function VideoProvider({
 				videoHeight,
 				elementWidth,
 				elementHeight,
+				display,
 				setVideoWidth,
 				setVideoHeight,
 				setElementWidth,
 				setElementHeight,
+				setDisplay,
 			}}
 		>
 			{children}
