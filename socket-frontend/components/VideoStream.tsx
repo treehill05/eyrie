@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface VideoStreamProps {
   streamUrl: string;
@@ -47,7 +48,7 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
   const handleImageError = () => {
     setImageError(true);
     console.error(
-      "Failed to load video stream image - camera may not be started"
+      "Failed to load video stream image - camera may not be started",
     );
   };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { DetectionData } from "./PersonPositionDisplay";
+import type { DetectionData } from "./PersonPositionDisplay";
 
 interface WebSocketConnectionProps {
   url: string;
@@ -64,7 +64,7 @@ export const WebSocketConnection: React.FC<WebSocketConnectionProps> = ({
             console.log(
               `Attempting to reconnect... (${
                 reconnectAttempts + 1
-              }/${maxReconnectAttempts})`
+              }/${maxReconnectAttempts})`,
             );
             setReconnectAttempts((prev) => prev + 1);
             connect();

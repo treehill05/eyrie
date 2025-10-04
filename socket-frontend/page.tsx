@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
-import { VideoStream } from "./components/VideoStream";
-import {
-  PersonPositionDisplay,
-  DetectionData,
-} from "./components/PersonPositionDisplay";
-import { WebSocketConnection } from "./components/WebSocketConnection";
+import React, { useCallback, useEffect, useState } from "react";
 import { ControlPanel } from "./components/ControlPanel";
+import {
+  type DetectionData,
+  PersonPositionDisplay,
+} from "./components/PersonPositionDisplay";
+import { VideoStream } from "./components/VideoStream";
+import { WebSocketConnection } from "./components/WebSocketConnection";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -15,7 +15,7 @@ export default function DevPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [detectionData, setDetectionData] = useState<DetectionData | null>(
-    null
+    null,
   );
   const [streamUrl, setStreamUrl] = useState(`${BACKEND_URL}/video_feed`);
   const [isInitializing, setIsInitializing] = useState(true);
