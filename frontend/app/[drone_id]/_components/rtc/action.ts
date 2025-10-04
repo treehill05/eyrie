@@ -40,9 +40,34 @@ async function getCloudflareCredentials(): Promise<CloudflareIceServer[]> {
 	}
 }
 
+async function sendIceServersToBackend(iceServers: IceServer[]): Promise<void> {
+	const fastapiUrl = process.env.FASTAPI_URL || "http://localhost:8000";
+
+	try {
+		const response = await fetch(`${fastapiUrl}/ice-servers`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ iceServers }),
+		});
+
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+		}
+
+		const result = await response.json();
+		console.log("Successfully sent ICE servers to backend:", result);
+	} catch (error) {
+		console.error("Failed to send ICE servers to backend:", error);
+		// Don't throw - we still want to return the ICE servers to the frontend
+	}
+}
+
 export async function requestRTC(): Promise<{ iceServers: IceServer[] }> {
 	try {
 		const cfServers = await getCloudflareCredentials();
+		let finalIceServers: IceServer[] = [];
 
 		if (cfServers.length > 0) {
 			// Filter out port 53 URLs as they're blocked by browsers
@@ -57,24 +82,30 @@ export async function requestRTC(): Promise<{ iceServers: IceServer[] }> {
 					});
 				}
 			}
-			return { iceServers: filteredServers };
-		}
-
-		// Fallback to STUN servers
-		return {
-			iceServers: [
+			finalIceServers = filteredServers;
+		} else {
+			// Fallback to STUN servers
+			finalIceServers = [
 				{ urls: "stun:stun.l.google.com:19302" },
 				{ urls: "stun:stun.cloudflare.com:3478" },
-			],
-		};
+			];
+		}
+
+		// Send ICE servers to backend
+		await sendIceServersToBackend(finalIceServers);
+
+		return { iceServers: finalIceServers };
 	} catch (error) {
 		console.error("Failed to get ICE servers:", error);
 		// Return STUN fallback on error
-		return {
-			iceServers: [
-				{ urls: "stun:stun.l.google.com:19302" },
-				{ urls: "stun:stun.cloudflare.com:3478" },
-			],
-		};
+		const fallbackServers = [
+			{ urls: "stun:stun.l.google.com:19302" },
+			{ urls: "stun:stun.cloudflare.com:3478" },
+		];
+
+		// Try to send fallback servers to backend too
+		await sendIceServersToBackend(fallbackServers);
+
+		return { iceServers: fallbackServers };
 	}
 }
