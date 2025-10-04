@@ -1,18 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
-import { requestRTC } from "../../action";
+import { createContext, useContext, useEffect, useState } from "react";
+import { requestRTC } from "./action";
+import type { IceServer } from "./types";
+
+interface IRTCContext {
+	iceServers?: IceServer[];
+}
+
+const RTCContext = createContext<IRTCContext>({});
+
+export function useRTC() {
+	const context = useContext(RTCContext);
+	if (!context) {
+		throw new Error("useRTC must be used within a RTCProvider");
+	}
+	return context;
+}
 
 export default function RTCProvider({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	const [iceServers, setIceServers] = useState<IceServer[]>();
+
 	useEffect(() => {
 		requestRTC().then((res) => {
-			console.log(res);
+			setIceServers(res.iceServers);
 		});
 	}, []);
 
-	return children;
+	return (
+		<RTCContext.Provider value={{ iceServers }}>{children}</RTCContext.Provider>
+	);
 }

@@ -1,20 +1,10 @@
 "use server";
 
-interface IceServer {
-	urls: string | string[];
-	username?: string;
-	credential?: string;
-}
-
-interface CloudflareIceServer {
-	urls: string[];
-	username?: string;
-	credential?: string;
-}
-
-interface CloudflareResponse {
-	iceServers: CloudflareIceServer[];
-}
+import type {
+	CloudflareIceServer,
+	CloudflareResponse,
+	IceServer,
+} from "./types";
 
 async function getCloudflareCredentials(): Promise<CloudflareIceServer[]> {
 	const turnKeyId = process.env.TURN_APP_ID;
