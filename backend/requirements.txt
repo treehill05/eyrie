@@ -13,3 +13,4 @@ pillow>=9.0.0
 websockets>=11.0.0
 python-multipart>=0.0.5
 cloudflare
+ultralytics==8.0.196
