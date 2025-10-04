@@ -8,36 +8,79 @@ import {
 	YAxis,
 	CartesianGrid,
 	Tooltip,
-	Legend,
 	ResponsiveContainer,
 	Area,
 	AreaChart,
 } from "recharts";
 import { useMemo, useId } from "react";
+import type { DetectionData } from "../rtc/types";
+
+const isUsingMockData = false;
+
+// Mock data generator for testing
+const generateMockData = (): DetectionData[] => {
+	const startTime = Date.now();
+	const mockData: DetectionData[] = [];
+
+	for (let i = 0; i < 50; i++) {
+		// Create a more interesting pattern - simulate people entering/leaving
+		const basePersons = 3;
+		const wave = Math.sin(i / 5) * 3; // Sine wave for natural variation
+		const noise = Math.random() * 2 - 1; // Random noise
+		const totalPersons = Math.max(0, Math.floor(basePersons + wave + noise));
+
+		// Confidence varies slightly but generally high
+		const averageConfidence = 0.82 + Math.random() * 0.13; // 82-95%
+
+		mockData.push({
+			total_persons: totalPersons,
+			average_confidence: averageConfidence,
+			positions: Array.from({ length: totalPersons }, (_, idx) => ({
+				id: idx,
+				x_center: Math.random() * 1920,
+				y_center: Math.random() * 1080,
+				width: 100 + Math.random() * 100,
+				height: 150 + Math.random() * 100,
+				confidence: averageConfidence + (Math.random() * 0.1 - 0.05),
+				normalized_x: Math.random(),
+				normalized_y: Math.random(),
+				normalized_width: 0.05 + Math.random() * 0.05,
+				normalized_height: 0.1 + Math.random() * 0.05,
+			})),
+			timestamp: startTime + i * 1000, // 1 second intervals
+			frame_available: true,
+		});
+	}
+
+	return mockData;
+};
 
 export default function Graph() {
 	const { dataHistory } = useRTC();
 	const gradientId = useId();
 
+	// Use mock data if no real data is available
+	const displayData = !isUsingMockData ? dataHistory : generateMockData();
+
 	// Transform data for recharts
 	const chartData = useMemo(() => {
-		if (!dataHistory || dataHistory.length === 0) return [];
+		if (!displayData || displayData.length === 0) return [];
 
 		// Get the first timestamp to calculate relative time
-		const startTime = dataHistory[0].timestamp;
+		const startTime = displayData[0].timestamp;
 
-		return dataHistory.map((data, index) => ({
+		return displayData.map((data, index) => ({
 			index,
 			time: ((data.timestamp - startTime) / 1000).toFixed(1), // Convert to seconds
 			totalPersons: data.total_persons,
 			avgConfidence: (data.average_confidence * 100).toFixed(1), // Convert to percentage
 			timestamp: data.timestamp,
 		}));
-	}, [dataHistory]);
+	}, [displayData]);
 
 	// Calculate statistics
 	const stats = useMemo(() => {
-		if (!dataHistory || dataHistory.length === 0) {
+		if (!displayData || displayData.length === 0) {
 			return {
 				maxPersons: 0,
 				avgPersons: 0,
@@ -45,29 +88,36 @@ export default function Graph() {
 			};
 		}
 
-		const maxPersons = Math.max(...dataHistory.map((d) => d.total_persons));
+		const maxPersons = Math.max(...displayData.map((d) => d.total_persons));
 		const avgPersons =
-			dataHistory.reduce((acc, d) => acc + d.total_persons, 0) /
-			dataHistory.length;
+			displayData.reduce((acc, d) => acc + d.total_persons, 0) /
+			displayData.length;
 		const avgConfidence =
-			dataHistory.reduce((acc, d) => acc + d.average_confidence, 0) /
-			dataHistory.length;
+			displayData.reduce((acc, d) => acc + d.average_confidence, 0) /
+			displayData.length;
 
 		return {
 			maxPersons,
 			avgPersons: avgPersons.toFixed(1),
 			avgConfidence: (avgConfidence * 100).toFixed(1),
 		};
-	}, [dataHistory]);
+	}, [displayData]);
 
-	if (!dataHistory || dataHistory.length === 0) {
+	// Show empty state if no data is available
+	if (!isUsingMockData && (!dataHistory || dataHistory.length === 0)) {
 		return (
-			<div className="h-full w-full flex items-center justify-center text-muted-foreground">
-				<div className="text-center space-y-2">
-					<p className="text-lg font-medium">No data yet</p>
-					<p className="text-sm">
-						Connect to a drone to start seeing detection analytics
-					</p>
+			<div className="h-full w-full flex flex-col items-center justify-center p-8">
+				<div className="max-w-md text-center space-y-4">
+					<div className="w-20 h-20 mx-auto rounded-full bg-muted flex items-center justify-center">
+						<span className="text-4xl">📊</span>
+					</div>
+					<div className="space-y-2">
+						<h3 className="text-lg font-semibold">No Data Available</h3>
+						<p className="text-sm text-muted-foreground">
+							Connect to a drone and start detection to see analytics and graphs
+							here.
+						</p>
+					</div>
 				</div>
 			</div>
 		);
@@ -75,6 +125,21 @@ export default function Graph() {
 
 	return (
 		<div className="h-full w-full flex flex-col p-4 gap-4">
+			{/* Mock Data Badge */}
+			{isUsingMockData && (
+				<div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2.5 flex items-center gap-2">
+					<span className="text-lg">📊</span>
+					<div className="flex-1">
+						<p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+							Mock Data Mode
+						</p>
+						<p className="text-xs text-amber-600/80 dark:text-amber-400/80">
+							Connect to a drone to see real-time analytics
+						</p>
+					</div>
+				</div>
+			)}
+
 			{/* Statistics Cards */}
 			<div className="grid grid-cols-3 gap-3">
 				<div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-3">
@@ -107,7 +172,10 @@ export default function Graph() {
 					Person Detection Over Time
 				</h3>
 				<ResponsiveContainer width="100%" height="100%">
-					<AreaChart data={chartData}>
+					<AreaChart
+						data={chartData}
+						margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+					>
 						<defs>
 							<linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
 								<stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -117,16 +185,10 @@ export default function Graph() {
 						<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
 						<XAxis
 							dataKey="time"
-							label={{
-								value: "Time (s)",
-								position: "insideBottom",
-								offset: -5,
-							}}
 							tick={{ fontSize: 12 }}
 							className="text-muted-foreground"
 						/>
 						<YAxis
-							label={{ value: "Persons", angle: -90, position: "insideLeft" }}
 							tick={{ fontSize: 12 }}
 							className="text-muted-foreground"
 							allowDecimals={false}
@@ -140,7 +202,6 @@ export default function Graph() {
 							}}
 							labelFormatter={(value) => `Time: ${value}s`}
 						/>
-						<Legend wrapperStyle={{ fontSize: "12px" }} />
 						<Area
 							type="monotone"
 							dataKey="totalPersons"
@@ -159,24 +220,17 @@ export default function Graph() {
 					Detection Confidence Over Time
 				</h3>
 				<ResponsiveContainer width="100%" height="100%">
-					<LineChart data={chartData}>
+					<LineChart
+						data={chartData}
+						margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+					>
 						<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
 						<XAxis
 							dataKey="time"
-							label={{
-								value: "Time (s)",
-								position: "insideBottom",
-								offset: -5,
-							}}
 							tick={{ fontSize: 12 }}
 							className="text-muted-foreground"
 						/>
 						<YAxis
-							label={{
-								value: "Confidence (%)",
-								angle: -90,
-								position: "insideLeft",
-							}}
 							tick={{ fontSize: 12 }}
 							className="text-muted-foreground"
 							domain={[0, 100]}
@@ -191,7 +245,6 @@ export default function Graph() {
 							labelFormatter={(value) => `Time: ${value}s`}
 							formatter={(value: number) => [`${value}%`, "Confidence"]}
 						/>
-						<Legend wrapperStyle={{ fontSize: "12px" }} />
 						<Line
 							type="monotone"
 							dataKey="avgConfidence"
