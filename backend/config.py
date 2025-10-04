@@ -29,11 +29,14 @@ if not env_loaded:
 
 BACKEND_HOST = os.getenv("BACKEND_HOST", "0.0.0.0")
 BACKEND_PORT = int(os.getenv("BACKEND_PORT", "8000"))
+RTC_PORT = int(os.getenv("RTC_PORT", "8001"))
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Computed URLs
 BACKEND_URL = f"http://{BACKEND_HOST if BACKEND_HOST != '0.0.0.0' else 'localhost'}:{BACKEND_PORT}"
 BACKEND_WS_URL = f"ws://{BACKEND_HOST if BACKEND_HOST != '0.0.0.0' else 'localhost'}:{BACKEND_PORT}"
+RTC_URL = f"http://{BACKEND_HOST if BACKEND_HOST != '0.0.0.0' else 'localhost'}:{RTC_PORT}"
+RTC_WS_URL = f"ws://{BACKEND_HOST if BACKEND_HOST != '0.0.0.0' else 'localhost'}:{RTC_PORT}"
 
 # ============================================================================
 # STUN/TURN Configuration
@@ -101,9 +104,12 @@ def print_config():
     print("=" * 70)
     print(f"Backend URL:      {BACKEND_URL}")
     print(f"Backend WS URL:   {BACKEND_WS_URL}")
+    print(f"RTC URL:          {RTC_URL}")
+    print(f"RTC WS URL:       {RTC_WS_URL}")
     print(f"Frontend URL:     {FRONTEND_URL}")
     print(f"Host:             {BACKEND_HOST}")
-    print(f"Port:             {BACKEND_PORT}")
+    print(f"Backend Port:     {BACKEND_PORT}")
+    print(f"RTC Port:         {RTC_PORT}")
     print("\n" + "=" * 70)
     print("🎥 VIDEO CONFIGURATION")
     print("=" * 70)
@@ -132,8 +138,11 @@ CONFIG = {
     # Server
     "BACKEND_HOST": BACKEND_HOST,
     "BACKEND_PORT": BACKEND_PORT,
+    "RTC_PORT": RTC_PORT,
     "BACKEND_URL": BACKEND_URL,
     "BACKEND_WS_URL": BACKEND_WS_URL,
+    "RTC_URL": RTC_URL,
+    "RTC_WS_URL": RTC_WS_URL,
     "FRONTEND_URL": FRONTEND_URL,
     
     # STUN/TURN

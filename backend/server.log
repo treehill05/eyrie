@@ -1,0 +1,53 @@
+2025-10-04 16:47:35,687 - rtc_server - INFO - Backend initialized with default ICE configuration
+2025-10-04 16:47:35,687 - rtc_server - INFO - Default STUN: stun:stun.cloudflare.com:3478
+2025-10-04 16:47:35,687 - rtc_server - INFO - Default TURN endpoints: 2
+INFO:     Started server process [42521]
+INFO:     Waiting for application startup.
+2025-10-04 16:47:35,692 - rtc_server - INFO - Starting up WebRTC backend...
+2025-10-04 16:47:35,739 - person_detector - INFO - Model loaded successfully from yolov8n.pt
+2025-10-04 16:47:35,739 - rtc_server - INFO - Person detector initialized successfully with model: yolov8n.pt
+2025-10-04 16:47:35,739 - rtc_server - INFO - Detection broadcast loop started
+INFO:     Application startup complete.
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8001): address already in use
+INFO:     Waiting for application shutdown.
+2025-10-04 16:47:35,741 - rtc_server - INFO - Shutting down WebRTC backend...
+2025-10-04 16:47:35,741 - rtc_server - INFO - Shutdown complete
+INFO:     Application shutdown complete.
+✓ Loaded configuration from: /Users/gabrielfagundes/Desktop/Crowd Project/backend/.env
+
+======================================================================
+📋 SERVER CONFIGURATION
+======================================================================
+Backend URL:      http://localhost:8001
+Backend WS URL:   ws://localhost:8001
+RTC URL:          http://localhost:8001
+RTC WS URL:       ws://localhost:8001
+Frontend URL:     http://localhost:3000
+Host:             0.0.0.0
+Backend Port:     8001
+RTC Port:         8001
+
+======================================================================
+🎥 VIDEO CONFIGURATION
+======================================================================
+Default Source:   file
+Upload Folder:    upload
+Default Video:    vecteezy_aerial-view-of-marathon-runners-on-the-streets-of-kyiv-ukraine_11539866.mp4
+Default Path:     upload/vecteezy_aerial-view-of-marathon-runners-on-the-streets-of-kyiv-ukraine_11539866.mp4
+Loop Video:       True
+Camera ID:        0
+
+======================================================================
+🤖 MODEL CONFIGURATION
+======================================================================
+Model Path:       yolov8n.pt
+Confidence:       0.5
+
+======================================================================
+🌐 WEBRTC CONFIGURATION
+======================================================================
+STUN Server:      stun:stun.cloudflare.com:3478
+TURN Servers:     2 configured
+TURN Auth:        No
+======================================================================
+

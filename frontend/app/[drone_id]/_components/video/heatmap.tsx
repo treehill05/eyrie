@@ -1,13 +1,23 @@
 "use client";
 
-import { DATA_POINTS } from "@/lib/constants";
 import { useVideo } from "./provider";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
+import { useRTC } from "../rtc";
 
 export default function VideoHeatmap() {
 	const { elementWidth, elementHeight, videoWidth, videoHeight } = useVideo();
 	const svgRef = useRef<SVGSVGElement>(null);
+	const { dataHistory } = useRTC();
+
+	const dataPoints = useMemo(
+		() =>
+			dataHistory?.[dataHistory.length - 1]?.positions.map((point) => ({
+				x: point.x_center,
+				y: point.y_center,
+			})) || [],
+		[dataHistory],
+	);
 
 	const calculateXPosition = useCallback(
 		(x: number) => {
@@ -30,7 +40,7 @@ export default function VideoHeatmap() {
 		d3.select(svgRef.current).selectAll("*").remove();
 
 		// Transform data points to element coordinates
-		const transformedPoints = DATA_POINTS.map((point) => ({
+		const transformedPoints = dataPoints.map((point) => ({
 			x: calculateXPosition(point.x),
 			y: calculateYPosition(point.y),
 		}));
@@ -64,7 +74,13 @@ export default function VideoHeatmap() {
 			.attr("fill", (d) => colorScale(d.value))
 			.attr("opacity", 0.6)
 			.attr("stroke", "none");
-	}, [elementWidth, elementHeight, calculateXPosition, calculateYPosition]);
+	}, [
+		elementWidth,
+		elementHeight,
+		calculateXPosition,
+		calculateYPosition,
+		dataPoints,
+	]);
 
 	return (
 		<svg
