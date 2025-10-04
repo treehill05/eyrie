@@ -68,15 +68,17 @@ class PersonDetector:
                         conf = float(box.conf[0])
                         
                         if cls == 0 and conf > self.conf_threshold:  # Person class
-                            # Get bounding box coordinates
-                            x_center, y_center, width, height = box.xywh[0].cpu().numpy()
+                            # Get bounding box coordinates in pixels (xywh format)
+                            x_center_px, y_center_px, width_px, height_px = box.xywh[0].cpu().numpy()
                             
-                            # Convert to image coordinates
+                            # Get image dimensions
                             img_height, img_width = result.orig_shape
-                            x_center_px = x_center * img_width
-                            y_center_px = y_center * img_height
-                            width_px = width * img_width
-                            height_px = height * img_height
+                            
+                            # Calculate normalized coordinates (0-1 range)
+                            normalized_x = x_center_px / img_width
+                            normalized_y = y_center_px / img_height
+                            normalized_width = width_px / img_width
+                            normalized_height = height_px / img_height
                             
                             person_positions.append({
                                 'id': len(person_positions),
@@ -85,10 +87,10 @@ class PersonDetector:
                                 'width': float(width_px),
                                 'height': float(height_px),
                                 'confidence': float(conf),
-                                'normalized_x': float(x_center),
-                                'normalized_y': float(y_center),
-                                'normalized_width': float(width),
-                                'normalized_height': float(height)
+                                'normalized_x': float(normalized_x),
+                                'normalized_y': float(normalized_y),
+                                'normalized_width': float(normalized_width),
+                                'normalized_height': float(normalized_height)
                             })
             
             return person_positions

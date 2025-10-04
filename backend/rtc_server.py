@@ -33,21 +33,7 @@ import uvicorn
 from dotenv import load_dotenv
 
 from person_detector import PersonDetector
-
-# Find and load .env file from project root
-current_dir = Path(__file__).resolve().parent
-root_dir = current_dir.parent
-
-env_loaded = False
-for env_path in [current_dir / '.env', root_dir / '.env', Path('.env')]:
-    if env_path.exists():
-        load_dotenv(env_path)
-        env_loaded = True
-        print(f"Loaded .env from: {env_path}")
-        break
-
-if not env_loaded:
-    print("Warning: No .env file found. Using default values.")
+import config  # Centralized configuration
 
 # Configure logging
 logging.basicConfig(
@@ -56,41 +42,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Print configuration on startup
+config.print_config()
+
 # ============================================================================
 # Configuration
 # ============================================================================
 
-# Default TURN/STUN configuration from environment (can be overridden by frontend)
-STUN_URL = os.getenv("STUN_URL", "stun:stun.cloudflare.com:3478")
-TURN_URLS_STR = os.getenv("TURN_URLS", "")
-TURN_USERNAME = os.getenv("TURN_USERNAME", "")
-TURN_CREDENTIAL = os.getenv("TURN_CREDENTIAL", "")
-
-if TURN_URLS_STR:
-    TURN_URLS = [url.strip() for url in TURN_URLS_STR.split(",") if url.strip()]
-else:
-    TURN_URLS = [
-        "turn:turn.cloudflare.com:3478?transport=udp",
-        "turn:turn.cloudflare.com:3478?transport=tcp",
-        "turn:turn.cloudflare.com:80?transport=tcp",
-        "turns:turn.cloudflare.com:443?transport=tcp"
-    ]
-
-# Initialize default RTCConfiguration
+# Initialize default RTCConfiguration from centralized config
 rtc_configuration = RTCConfiguration(
     iceServers=[
-        RTCIceServer(urls=[STUN_URL]),
+        RTCIceServer(urls=[config.STUN_URL]),
         RTCIceServer(
-            urls=TURN_URLS,
-            username=TURN_USERNAME,
-            credential=TURN_CREDENTIAL
+            urls=config.TURN_URLS,
+            username=config.TURN_USERNAME,
+            credential=config.TURN_CREDENTIAL
         )
     ]
 )
 
 logger.info("Backend initialized with default ICE configuration")
-logger.info(f"Default STUN: {STUN_URL}")
-logger.info(f"Default TURN endpoints: {len(TURN_URLS)}")
+logger.info(f"Default STUN: {config.STUN_URL}")
+logger.info(f"Default TURN endpoints: {len(config.TURN_URLS)}")
 
 # ============================================================================
 # Data Models
@@ -100,6 +73,10 @@ class OfferRequest(BaseModel):
     sdp: str
     type: str
     client_id: str
+    source: str = "camera"  # "camera" or "file"
+    video_path: str = None  # Path to video file if source is "file"
+    camera_id: int = 0  # Camera ID if source is "camera"
+    loop_video: bool = True  # Whether to loop video file
 
 class StreamStartRequest(BaseModel):
     client_id: str
@@ -167,6 +144,58 @@ class VideoFileTrack(VideoStreamTrack):
         self.frame_count += 1
         
         # Convert frame to VideoFrame
+        video_frame = VideoFrame.from_ndarray(frame, format="bgr24")
+        video_frame.pts = pts
+        video_frame.time_base = time_base
+        
+        return video_frame
+    
+    def stop(self):
+        if self.cap:
+            self.cap.release()
+            logger.info(f"Video file {self.video_path} released")
+
+
+class FileVideoTrack(VideoStreamTrack):
+    """Video track that streams from a video file"""
+    
+    def __init__(self, video_path: str, loop: bool = True):
+        super().__init__()
+        self.video_path = video_path
+        self.loop = loop
+        self.cap = cv2.VideoCapture(video_path)
+        self.frame_count = 0
+        
+        if not self.cap.isOpened():
+            raise RuntimeError(f"Could not open video file {video_path}")
+        
+        # Get video properties
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        logger.info(f"Video file initialized: {video_path}")
+        logger.info(f"Video properties - FPS: {self.fps}, Total frames: {self.total_frames}, Resolution: {width}x{height}")
+        
+    async def recv(self):
+        pts, time_base = await self.next_timestamp()
+        
+        ret, frame = self.cap.read()
+        
+        # If video ended, loop back to start if enabled
+        if not ret:
+            if self.loop:
+                logger.info(f"Video ended, looping back to start")
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = self.cap.read()
+            
+            # If still no frame, create black frame
+            if not ret:
+                frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        
+        self.frame_count += 1
+        
         video_frame = VideoFrame.from_ndarray(frame, format="bgr24")
         video_frame.pts = pts
         video_frame.time_base = time_base
@@ -341,9 +370,8 @@ async def lifespan(app: FastAPI):
     
     logger.info("Starting up WebRTC backend...")
     try:
-        model_path = os.getenv("MODEL_PATH", "yolov8n.pt")
-        detector = PersonDetector(model_path, conf_threshold=0.5)
-        logger.info("Person detector initialized successfully")
+        detector = PersonDetector(config.MODEL_PATH, conf_threshold=config.DETECTION_CONFIDENCE)
+        logger.info(f"Person detector initialized successfully with model: {config.MODEL_PATH}")
         
         connection_manager = ConnectionManager()
         
@@ -377,7 +405,7 @@ app = FastAPI(title="WebRTC Person Detection Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -564,6 +592,33 @@ async def get_detection_data(client_id: str):
     }
 
 
+@app.get("/available-videos")
+async def get_available_videos():
+    """List available video files in the upload folder"""
+    upload_folder = Path(config.UPLOAD_FOLDER)
+    
+    if not upload_folder.exists():
+        return {"videos": [], "message": "Upload folder not found"}
+    
+    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
+    videos = []
+    
+    for video_file in upload_folder.iterdir():
+        if video_file.is_file() and video_file.suffix.lower() in video_extensions:
+            videos.append({
+                "filename": video_file.name,
+                "path": str(video_file),
+                "size_mb": round(video_file.stat().st_size / (1024 * 1024), 2)
+            })
+    
+    return {
+        "videos": videos,
+        "count": len(videos),
+        "upload_folder": str(upload_folder.absolute()),
+        "default_video": config.DEFAULT_VIDEO_FILE
+    }
+
+
 # ============================================================================
 # WebSocket Endpoint
 # ============================================================================
@@ -618,8 +673,8 @@ async def websocket_detection_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     uvicorn.run(
         "rtc_server:app",
-        host="0.0.0.0",
-        port=8000,
+        host=config.BACKEND_HOST,
+        port=config.RTC_PORT,
         reload=True,
         log_level="info"
     )
