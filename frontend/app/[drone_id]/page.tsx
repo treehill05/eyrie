@@ -3,9 +3,9 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import Log from "./_components/log";
 import Video from "./_components/video";
 import Graph from "./_components/graph";
+import Chat from "./_components/chat";
 
 export default async function Page() {
 	return (
@@ -26,7 +26,7 @@ export default async function Page() {
 			</ResizablePanel>
 			<ResizableHandle />
 			<ResizablePanel defaultSize={30}>
-				<Log />
+				<Chat />
 			</ResizablePanel>
 		</ResizablePanelGroup>
 	);
