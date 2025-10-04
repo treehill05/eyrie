@@ -1,52 +1,54 @@
-INFO:     Will watch for changes in these directories: ['/Users/gabrielfagundes/Desktop/Crowd Project/backend']
+INFO:     Will watch for changes in these directories: ['C:\\Users\\andre\\OneDrive\\Desktop\\Projects\\eyrie\\backend']
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
-INFO:     Started reloader process [43217] using WatchFiles
-2025-10-04 18:13:52,832 - rtc_server - INFO - Backend initialized with default ICE configuration
-2025-10-04 18:13:52,832 - rtc_server - INFO - Default STUN: stun:stun.cloudflare.com:3478
-2025-10-04 18:13:52,832 - rtc_server - INFO - Default TURN endpoints: 2
-INFO:     Started server process [43219]
-INFO:     Waiting for application startup.
-2025-10-04 18:13:52,836 - rtc_server - INFO - Starting up WebRTC backend...
-2025-10-04 18:13:52,852 - person_detector - INFO - Model loaded successfully from yolov8n.pt
-2025-10-04 18:13:52,852 - rtc_server - INFO - Person detector initialized successfully with model: yolov8n.pt
-2025-10-04 18:13:52,852 - rtc_server - INFO - Detection broadcast loop started
-INFO:     Application startup complete.
-✓ Loaded configuration from: /Users/gabrielfagundes/Desktop/Crowd Project/backend/.env
-
-======================================================================
-📋 SERVER CONFIGURATION
-======================================================================
-Backend URL:      http://localhost:8000
-Backend WS URL:   ws://localhost:8000
-RTC URL:          http://localhost:8001
-RTC WS URL:       ws://localhost:8001
-Frontend URL:     http://localhost:3000
-Host:             0.0.0.0
-Backend Port:     8000
-RTC Port:         8001
-
-======================================================================
-🎥 VIDEO CONFIGURATION
-======================================================================
-Default Source:   file
-Upload Folder:    upload
-Default Video:    vecteezy_aerial-view-of-marathon-runners-on-the-streets-of-kyiv-ukraine_11539866.mp4
-Default Path:     upload/vecteezy_aerial-view-of-marathon-runners-on-the-streets-of-kyiv-ukraine_11539866.mp4
-Loop Video:       True
-Camera ID:        0
-
-======================================================================
-🤖 MODEL CONFIGURATION
-======================================================================
-Model Path:       yolov8n.pt
-Confidence:       0.5
-
-======================================================================
-🌐 WEBRTC CONFIGURATION
-======================================================================
-STUN Server:      stun:stun.cloudflare.com:3478
-TURN Servers:     2 configured
-TURN Auth:        No
-======================================================================
-
-INFO:     127.0.0.1:57189 - "GET /health HTTP/1.1" 200 OK
+INFO:     Started reloader process [3872] using StatReload
+Process SpawnProcess-1:
+Traceback (most recent call last):
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\process.py", line 313, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\OneDrive\Desktop\Projects\eyrie\backend\.venv\Lib\site-packages\uvicorn\_subprocess.py", line 76, in subprocess_started
+    target(sockets=sockets)
+    ~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\OneDrive\Desktop\Projects\eyrie\backend\.venv\Lib\site-packages\uvicorn\server.py", line 61, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\andre\OneDrive\Desktop\Projects\eyrie\backend\.venv\Lib\site-packages\uvicorn\server.py", line 68, in serve
+    config.load()
+    ~~~~~~~~~~~^^
+  File "C:\Users\andre\OneDrive\Desktop\Projects\eyrie\backend\.venv\Lib\site-packages\uvicorn\config.py", line 467, in load
+    self.loaded_app = import_from_string(self.app)
+                      ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\andre\OneDrive\Desktop\Projects\eyrie\backend\.venv\Lib\site-packages\uvicorn\importer.py", line 21, in import_from_string
+    module = importlib.import_module(module_str)
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1026, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "C:\Users\andre\OneDrive\Desktop\Projects\eyrie\backend\rtc_server.py", line 36, in <module>
+    import config  # Centralized configuration
+    ^^^^^^^^^^^^^
+  File "C:\Users\andre\OneDrive\Desktop\Projects\eyrie\backend\config.py", line 19, in <module>
+    print(f"\u2713 Loaded configuration from: {env_path}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 0: character maps to <undefined>
+INFO:     Stopping reloader process [3872]
