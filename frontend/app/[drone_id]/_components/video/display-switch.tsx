@@ -11,7 +11,7 @@ export default function DisplaySwitch() {
 			<ToggleGroup type="single" value={display} onValueChange={setDisplay}>
 				<ToggleGroupItem value="none">None</ToggleGroupItem>
 				<ToggleGroupItem value="points">Points</ToggleGroupItem>
-				<ToggleGroupItem value="heatmap">Heatmap</ToggleGroupItem>
+				<ToggleGroupItem value="heatmap">Heat</ToggleGroupItem>
 			</ToggleGroup>
 		</div>
 	);
