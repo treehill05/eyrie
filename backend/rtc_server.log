@@ -1,12 +1,12 @@
-2025-10-04 17:08:50,254 - rtc_server - INFO - Backend initialized with default ICE configuration
-2025-10-04 17:08:50,254 - rtc_server - INFO - Default STUN: stun:stun.cloudflare.com:3478
-2025-10-04 17:08:50,254 - rtc_server - INFO - Default TURN endpoints: 2
-INFO:     Started server process [69031]
+2025-10-04 17:23:47,958 - rtc_server - INFO - Backend initialized with default ICE configuration
+2025-10-04 17:23:47,958 - rtc_server - INFO - Default STUN: stun:stun.cloudflare.com:3478
+2025-10-04 17:23:47,958 - rtc_server - INFO - Default TURN endpoints: 2
+INFO:     Started server process [87262]
 INFO:     Waiting for application startup.
-2025-10-04 17:08:50,259 - rtc_server - INFO - Starting up WebRTC backend...
-2025-10-04 17:08:50,301 - person_detector - INFO - Model loaded successfully from yolov8n.pt
-2025-10-04 17:08:50,304 - rtc_server - INFO - Person detector initialized successfully with model: yolov8n.pt
-2025-10-04 17:08:50,304 - rtc_server - INFO - Detection broadcast loop started
+2025-10-04 17:23:47,962 - rtc_server - INFO - Starting up WebRTC backend...
+2025-10-04 17:23:47,979 - person_detector - INFO - Model loaded successfully from yolov8n.pt
+2025-10-04 17:23:47,980 - rtc_server - INFO - Person detector initialized successfully with model: yolov8n.pt
+2025-10-04 17:23:47,980 - rtc_server - INFO - Detection broadcast loop started
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
 ✓ Loaded configuration from: /Users/gabrielfagundes/Desktop/Crowd Project/backend/.env
@@ -47,4 +47,5 @@ TURN Servers:     2 configured
 TURN Auth:        No
 ======================================================================
 
-INFO:     127.0.0.1:53371 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54939 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55197 - "GET /health HTTP/1.1" 200 OK

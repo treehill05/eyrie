@@ -9,10 +9,12 @@ import {
 import { WebSocketConnection } from "./components/WebSocketConnection";
 import { ControlPanel } from "./components/ControlPanel";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const RTC_URL = process.env.NEXT_PUBLIC_RTC_URL || "http://localhost:8001";
 
 export default function DevPage() {
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isRTCStreaming, setIsRTCStreaming] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [detectionData, setDetectionData] = useState<DetectionData | null>(
     null
@@ -55,6 +57,36 @@ export default function DevPage() {
       }
     } catch (error) {
       console.error("Error stopping camera:", error);
+    }
+  }, []);
+
+  const handleStartRTC = useCallback(async () => {
+    try {
+      // The RTC server serves video automatically when connected
+      // We just need to check if it's available
+      const response = await fetch(`${RTC_URL}/health`);
+      
+      if (response.ok) {
+        setIsRTCStreaming(true);
+        setStreamUrl(`${RTC_URL}/video_feed`); // Placeholder - RTC uses WebRTC
+        console.log("RTC stream started successfully");
+      } else {
+        console.error("RTC server not available");
+        alert("RTC server is not running. Please start it on port 8001");
+      }
+    } catch (error) {
+      console.error("Error starting RTC stream:", error);
+      alert("Failed to connect to RTC server. Make sure it's running on port 8001");
+    }
+  }, []);
+
+  const handleStopRTC = useCallback(async () => {
+    try {
+      setIsRTCStreaming(false);
+      setStreamUrl(`${BACKEND_URL}/video_feed`);
+      console.log("RTC stream stopped successfully");
+    } catch (error) {
+      console.error("Error stopping RTC stream:", error);
     }
   }, []);
 
@@ -147,8 +179,11 @@ export default function DevPage() {
             <ControlPanel
               onStartCamera={handleStartCamera}
               onStopCamera={handleStopCamera}
+              onStartRTC={handleStartRTC}
+              onStopRTC={handleStopRTC}
               onUploadImage={handleUploadImage}
               isStreaming={isStreaming}
+              isRTCStreaming={isRTCStreaming}
               isConnected={isConnected}
             />
           </div>

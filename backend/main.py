@@ -88,23 +88,9 @@ async def startup_event():
         
         logger.info("Person detection system initialized successfully")
         
-        # Try to initialize camera automatically
-        try:
-            video_capture = cv2.VideoCapture(0)
-            if video_capture.isOpened():
-                # Test if we can read a frame
-                ret, frame = video_capture.read()
-                if ret and frame is not None:
-                    is_streaming = True
-                    logger.info("Camera initialized automatically on startup")
-                else:
-                    video_capture.release()
-                    video_capture = None
-                    logger.warning("Camera opened but failed to read frame")
-            else:
-                logger.warning("Failed to open camera automatically")
-        except Exception as e:
-            logger.warning(f"Failed to initialize camera automatically: {e}")
+        # Camera is NOT initialized automatically on startup
+        # Use /start_camera endpoint to manually activate the camera
+        logger.info("Camera ready - use /start_camera endpoint to activate")
             
     except Exception as e:
         logger.error(f"Failed to initialize detector: {e}")
