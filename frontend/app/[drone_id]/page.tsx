@@ -15,11 +15,11 @@ export default async function Page({
 }) {
 	return (
 		<ResizablePanelGroup
-			direction="vertical"
+			direction="horizontal"
 			className="min-h-screen rounded-lg min-w-screen"
 		>
 			<ResizablePanel defaultSize={70}>
-				<ResizablePanelGroup direction="horizontal">
+				<ResizablePanelGroup direction="vertical">
 					<ResizablePanel defaultSize={60}>
 						<Video />
 					</ResizablePanel>

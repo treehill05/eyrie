@@ -15,7 +15,7 @@ import {
 import { useMemo, useId } from "react";
 import type { DetectionData } from "../rtc/types";
 
-const isUsingMockData = false;
+const isUsingMockData = true;
 
 // Mock data generator for testing
 const generateMockData = (): DetectionData[] => {
