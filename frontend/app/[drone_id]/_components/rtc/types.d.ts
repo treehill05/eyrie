@@ -30,5 +30,6 @@ export interface DetectionData {
     normalized_height: number;
   }>;
   timestamp: number;
-  frame_available: boolean;
+  frame_number?: number;
+  client_id?: string;
 }

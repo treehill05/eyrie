@@ -46,6 +46,7 @@ export default function RTCProvider({
 	const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+	const webSocketRef = useRef<WebSocket | null>(null);
 	const [dataHistory, setDataHistory] = useState<DetectionData[]>([]);
 
 	const addData = useCallback((data: DetectionData) => {
@@ -152,35 +153,6 @@ export default function RTCProvider({
 					}
 				};
 
-				// Handle incoming data channel
-				pc.ondatachannel = (event) => {
-					console.log("Data channel received:", event.channel.label);
-					const dataChannel = event.channel;
-
-					dataChannel.onopen = () => {
-						console.log("Data channel opened");
-					};
-
-					dataChannel.onclose = () => {
-						console.log("Data channel closed");
-					};
-
-					dataChannel.onerror = (error) => {
-						console.error("Data channel error:", error);
-					};
-
-					dataChannel.onmessage = (event) => {
-						console.log("Data channel message received:", event.data);
-						try {
-							const data = JSON.parse(event.data);
-							console.log("Parsed data:", data);
-							addData(data);
-						} catch (error) {
-							console.error("Failed to parse data channel message:", error);
-						}
-					};
-				};
-
 				// Add transceivers for video (receive only, we don't send video)
 				pc.addTransceiver("video", { direction: "recvonly" });
 
@@ -224,6 +196,43 @@ export default function RTCProvider({
 				);
 
 				console.log("WebRTC connection established");
+
+				// Connect to WebSocket for detection data
+				const wsUrl = backendUrl.replace("http://", "ws://").replace("https://", "wss://");
+				const ws = new WebSocket(`${wsUrl}/ws/detection`);
+				webSocketRef.current = ws;
+
+				ws.onopen = () => {
+					console.log("WebSocket connected for detection data");
+					// Subscribe to this client's detection data
+					ws.send(JSON.stringify({
+						type: "subscribe",
+						client_id: droneId,
+					}));
+				};
+
+				ws.onmessage = (event) => {
+					try {
+						const message = JSON.parse(event.data);
+						console.log("WebSocket message received:", message.type);
+						
+						if (message.type === "detection_update" && message.data) {
+							console.log("Detection data received:", message.data);
+							addData(message.data);
+						}
+					} catch (error) {
+						console.error("Failed to parse WebSocket message:", error);
+					}
+				};
+
+				ws.onerror = (error) => {
+					console.error("WebSocket error:", error);
+				};
+
+				ws.onclose = () => {
+					console.log("WebSocket closed");
+				};
+
 			} catch (err) {
 				console.error("Error connecting:", err);
 				setError(err instanceof Error ? err.message : "Connection failed");
@@ -231,6 +240,10 @@ export default function RTCProvider({
 				if (peerConnectionRef.current) {
 					peerConnectionRef.current.close();
 					peerConnectionRef.current = null;
+				}
+				if (webSocketRef.current) {
+					webSocketRef.current.close();
+					webSocketRef.current = null;
 				}
 			}
 		},
@@ -241,6 +254,10 @@ export default function RTCProvider({
 		if (peerConnectionRef.current) {
 			peerConnectionRef.current.close();
 			peerConnectionRef.current = null;
+		}
+		if (webSocketRef.current) {
+			webSocketRef.current.close();
+			webSocketRef.current = null;
 		}
 		setVideoStream(null);
 		setIsConnected(false);
