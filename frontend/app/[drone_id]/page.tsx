@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ResizableHandle,
   ResizablePanel,
@@ -7,7 +9,7 @@ import Chat from "./_components/chat";
 import Graph from "./_components/graph";
 import Video from "./_components/video";
 
-export default async function Page() {
+export default function Page() {
   return (
     <ResizablePanelGroup
       direction="horizontal"

@@ -1,3 +1,5 @@
+"use client";
+
 import RTCProvider from "./_components/rtc";
 import VideoProvider from "./_components/video/provider";
 

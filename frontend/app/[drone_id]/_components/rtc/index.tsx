@@ -46,7 +46,7 @@ export default function RTCProvider({
 	const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-	const webSocketRef = useRef<WebSocket | null>(null);
+	const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 	const [dataHistory, setDataHistory] = useState<DetectionData[]>([]);
 
 	const addData = useCallback((data: DetectionData) => {
@@ -197,41 +197,29 @@ export default function RTCProvider({
 
 				console.log("WebRTC connection established");
 
-				// Connect to WebSocket for detection data
-				const wsUrl = backendUrl.replace("http://", "ws://").replace("https://", "wss://");
-				const ws = new WebSocket(`${wsUrl}/ws/detection`);
-				webSocketRef.current = ws;
-
-				ws.onopen = () => {
-					console.log("WebSocket connected for detection data");
-					// Subscribe to this client's detection data
-					ws.send(JSON.stringify({
-						type: "subscribe",
-						client_id: droneId,
-					}));
-				};
-
-				ws.onmessage = (event) => {
+				// Start polling for detection data (HTTP polling instead of WebSocket)
+				const pollDetectionData = async () => {
 					try {
-						const message = JSON.parse(event.data);
-						console.log("WebSocket message received:", message.type);
+						const response = await fetch(`${backendUrl}/detection-data/${droneId}`);
 						
-						if (message.type === "detection_update" && message.data) {
-							console.log("Detection data received:", message.data);
-							addData(message.data);
+						if (response.ok) {
+							const result = await response.json();
+							
+							if (result.data && result.data.total_persons !== undefined) {
+								console.log("Detection data received:", result.data);
+								addData(result.data);
+							}
+						} else if (response.status === 404) {
+							console.warn("Client not found on backend");
 						}
 					} catch (error) {
-						console.error("Failed to parse WebSocket message:", error);
+						console.error("Error polling detection data:", error);
 					}
 				};
 
-				ws.onerror = (error) => {
-					console.error("WebSocket error:", error);
-				};
-
-				ws.onclose = () => {
-					console.log("WebSocket closed");
-				};
+				// Poll every 100ms for real-time updates
+				pollingIntervalRef.current = setInterval(pollDetectionData, 100);
+				console.log("Started polling for detection data");
 
 			} catch (err) {
 				console.error("Error connecting:", err);
@@ -241,9 +229,9 @@ export default function RTCProvider({
 					peerConnectionRef.current.close();
 					peerConnectionRef.current = null;
 				}
-				if (webSocketRef.current) {
-					webSocketRef.current.close();
-					webSocketRef.current = null;
+				if (pollingIntervalRef.current) {
+					clearInterval(pollingIntervalRef.current);
+					pollingIntervalRef.current = null;
 				}
 			}
 		},
@@ -255,9 +243,9 @@ export default function RTCProvider({
 			peerConnectionRef.current.close();
 			peerConnectionRef.current = null;
 		}
-		if (webSocketRef.current) {
-			webSocketRef.current.close();
-			webSocketRef.current = null;
+		if (pollingIntervalRef.current) {
+			clearInterval(pollingIntervalRef.current);
+			pollingIntervalRef.current = null;
 		}
 		setVideoStream(null);
 		setIsConnected(false);

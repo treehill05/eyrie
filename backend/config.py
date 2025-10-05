@@ -16,11 +16,11 @@ for env_path in [current_dir / '.env', root_dir / '.env', Path('.env')]:
     if env_path.exists():
         load_dotenv(env_path)
         env_loaded = True
-        print(f"✓ Loaded configuration from: {env_path}")
+        print(f"[OK] Loaded configuration from: {env_path}")
         break
 
 if not env_loaded:
-    print("⚠️  No .env file found. Using default values.")
+    print("[WARNING] No .env file found. Using default values.")
     print("   Copy config.env.example to .env and customize as needed.")
 
 # ============================================================================
@@ -100,7 +100,7 @@ CORS_ORIGINS = [
 def print_config():
     """Print current configuration"""
     print("\n" + "=" * 70)
-    print("📋 SERVER CONFIGURATION")
+    print("SERVER CONFIGURATION")
     print("=" * 70)
     print(f"Backend URL:      {BACKEND_URL}")
     print(f"Backend WS URL:   {BACKEND_WS_URL}")
@@ -111,7 +111,7 @@ def print_config():
     print(f"Backend Port:     {BACKEND_PORT}")
     print(f"RTC Port:         {RTC_PORT}")
     print("\n" + "=" * 70)
-    print("🎥 VIDEO CONFIGURATION")
+    print("VIDEO CONFIGURATION")
     print("=" * 70)
     print(f"Default Source:   {DEFAULT_VIDEO_SOURCE}")
     print(f"Upload Folder:    {UPLOAD_FOLDER}")
@@ -120,12 +120,12 @@ def print_config():
     print(f"Loop Video:       {DEFAULT_LOOP_VIDEO}")
     print(f"Camera ID:        {DEFAULT_CAMERA_ID}")
     print("\n" + "=" * 70)
-    print("🤖 MODEL CONFIGURATION")
+    print("MODEL CONFIGURATION")
     print("=" * 70)
     print(f"Model Path:       {MODEL_PATH}")
     print(f"Confidence:       {DETECTION_CONFIDENCE}")
     print("\n" + "=" * 70)
-    print("🌐 WEBRTC CONFIGURATION")
+    print("WEBRTC CONFIGURATION")
     print("=" * 70)
     print(f"STUN Server:      {STUN_URL}")
     print(f"TURN Servers:     {len(TURN_URLS)} configured")
