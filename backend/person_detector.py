@@ -5,6 +5,7 @@ import json
 import time
 from typing import List, Dict, Tuple, Optional
 import logging
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,48 @@ class PersonDetector:
         self.load_model()
     
     def load_model(self):
-        """Load the YOLO model"""
+        """Load the YOLO model with PyTorch 2.6 compatibility"""
         try:
+            # Handle PyTorch 2.6+ weights_only=True compatibility
+            if hasattr(torch.serialization, 'add_safe_globals'):
+                # PyTorch 2.6+ - add safe globals for ultralytics models
+                torch.serialization.add_safe_globals([
+                    'ultralytics.nn.tasks.DetectionModel',
+                    'ultralytics.nn.modules.block.Bottleneck',
+                    'ultralytics.nn.modules.block.C2f',
+                    'ultralytics.nn.modules.block.SPPF',
+                    'ultralytics.nn.modules.conv.Conv',
+                    'ultralytics.nn.modules.head.Detect',
+                    'ultralytics.utils.torch_utils.initialize_weights',
+                    'torch.nn.modules.conv.Conv2d',
+                    'torch.nn.modules.batchnorm.BatchNorm2d',
+                    'torch.nn.modules.activation.SiLU',
+                    'torch.nn.modules.pooling.AdaptiveAvgPool2d',
+                    'torch.nn.modules.linear.Linear'
+                ])
+            
             self.model = YOLO(self.model_path)
             logger.info(f"Model loaded successfully from {self.model_path}")
         except Exception as e:
             logger.error(f"Failed to load model from {self.model_path}: {e}")
-            # fallback
+            # fallback with same compatibility handling
             try:
+                if hasattr(torch.serialization, 'add_safe_globals'):
+                    torch.serialization.add_safe_globals([
+                        'ultralytics.nn.tasks.DetectionModel',
+                        'ultralytics.nn.modules.block.Bottleneck',
+                        'ultralytics.nn.modules.block.C2f',
+                        'ultralytics.nn.modules.block.SPPF',
+                        'ultralytics.nn.modules.conv.Conv',
+                        'ultralytics.nn.modules.head.Detect',
+                        'ultralytics.utils.torch_utils.initialize_weights',
+                        'torch.nn.modules.conv.Conv2d',
+                        'torch.nn.modules.batchnorm.BatchNorm2d',
+                        'torch.nn.modules.activation.SiLU',
+                        'torch.nn.modules.pooling.AdaptiveAvgPool2d',
+                        'torch.nn.modules.linear.Linear'
+                    ])
+                
                 self.model = YOLO('yolov8n.pt')
                 logger.info("Using pre-trained YOLOv8n model as fallback")
             except Exception as e2:
