@@ -1,6 +1,6 @@
 """
 WebRTC Backend Server for Person Detection
-Receives video from file -> Processes with YOLO -> Streams to frontend
+Receives video from camera/source -> Processes with YOLO -> Streams to frontend
 """
 
 import asyncio
@@ -105,7 +105,7 @@ class OfferRequest(BaseModel):
 
 class StreamStartRequest(BaseModel):
     client_id: str
-    video_path: str = "ForBiggerEscapes.mp4"
+    camera_id: int = 0
 
 class DetectionData(BaseModel):
     client_id: str
@@ -119,43 +119,28 @@ class DetectionData(BaseModel):
 # Video Processing Track
 # ============================================================================
 
-class VideoFileTrack(VideoStreamTrack):
-    """Video track that reads from a video file"""
+class CameraVideoTrack(VideoStreamTrack):
+    """Video track that captures from camera"""
     
-    def __init__(self, video_path: str = "ForBiggerEscapes.mp4"):
+    def __init__(self, camera_id: int = 0):
         super().__init__()
-        self.video_path = video_path
-        
-        # Try to find the video file
-        if not os.path.exists(video_path):
-            # Try in current directory
-            alt_path = os.path.join(os.path.dirname(__file__), video_path)
-            if os.path.exists(alt_path):
-                self.video_path = alt_path
-            else:
-                raise FileNotFoundError(f"Video file not found: {video_path}")
-        
-        self.cap = cv2.VideoCapture(self.video_path)
+        self.camera_id = camera_id
+        self.cap = cv2.VideoCapture(camera_id)
         self.frame_count = 0
         
         if not self.cap.isOpened():
-            raise RuntimeError(f"Could not open video file: {self.video_path}")
+            raise RuntimeError(f"Could not open camera {camera_id}")
         
-        # Get video properties
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
         
-        logger.info(f"Video file initialized: {self.video_path}")
-        logger.info(f"Video properties: {self.width}x{self.height} @ {self.fps}fps, {self.total_frames} frames")
+        logger.info(f"Camera {camera_id} initialized")
         
     async def recv(self):
         pts, time_base = await self.next_timestamp()
         
         ret, frame = self.cap.read()
-        
-        # Loop the video when it ends
         if not ret:
             logger.info("Video ended, restarting from beginning")
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
@@ -167,7 +152,6 @@ class VideoFileTrack(VideoStreamTrack):
             frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)        
         self.frame_count += 1
         
-        # Convert frame to VideoFrame
         video_frame = VideoFrame.from_ndarray(frame, format="bgr24")
         video_frame.pts = pts
         video_frame.time_base = time_base
@@ -177,7 +161,7 @@ class VideoFileTrack(VideoStreamTrack):
     def stop(self):
         if self.cap:
             self.cap.release()
-            logger.info(f"Video file {self.video_path} released")
+            logger.info(f"Camera {self.camera_id} released")
 
 
 class ProcessedVideoTrack(VideoStreamTrack):
@@ -196,7 +180,6 @@ class ProcessedVideoTrack(VideoStreamTrack):
             frame = await self.track.recv()
             img = frame.to_ndarray(format="bgr24")
             
-            # Process frame with person detection
             annotated_img, detection_summary = self.detector.process_video_frame(img)
             
             self.frame_count += 1
@@ -210,7 +193,6 @@ class ProcessedVideoTrack(VideoStreamTrack):
                     f"{detection_summary['total_persons']} persons detected"
                 )
             
-            # Create new video frame with annotations
             new_frame = VideoFrame.from_ndarray(annotated_img, format="bgr24")
             new_frame.pts = frame.pts
             new_frame.time_base = frame.time_base
@@ -233,7 +215,7 @@ class ProcessedVideoTrack(VideoStreamTrack):
 class ClientConnection:
     client_id: str
     peer_connection: RTCPeerConnection
-    video_track: Optional[VideoFileTrack] = None
+    camera_track: Optional[CameraVideoTrack] = None
     processed_track: Optional[ProcessedVideoTrack] = None
     websocket: Optional[WebSocket] = None
     created_at: float = None
@@ -261,8 +243,8 @@ class ConnectionManager:
     async def remove_client(self, client_id: str):
         client = self.clients.pop(client_id, None)
         if client:
-            if client.video_track:
-                client.video_track.stop()
+            if client.camera_track:
+                client.camera_track.stop()
             await client.peer_connection.close()
             logger.info(f"Client removed: {client_id}")
     
@@ -378,11 +360,10 @@ app = FastAPI(title="WebRTC Person Detection Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.CORS_ORIGINS,
-    allow_credentials=False,
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
 # ============================================================================
@@ -394,8 +375,7 @@ async def root():
     return {
         "message": "WebRTC Person Detection Backend",
         "status": "running",
-        "version": "1.0.0",
-        "video_source": "ForBiggerEscapes.mp4"
+        "version": "1.0.0"
     }
 
 
@@ -414,6 +394,18 @@ async def health_check():
 async def receive_ice_servers(ice_config: dict):
     """
     Receive ICE server configuration from frontend
+    
+    Request body:
+    {
+        "iceServers": [
+            {"urls": ["stun:stun.cloudflare.com:3478"]},
+            {
+                "urls": ["turn:..."],
+                "username": "...",
+                "credential": "..."
+            }
+        ]
+    }
     """
     try:
         global rtc_configuration
@@ -473,23 +465,20 @@ async def handle_offer(offer_request: OfferRequest):
         async def on_iceconnectionstatechange():
             logger.info(f"[{client_id}] ICE state: {pc.iceConnectionState}")
         
-        # Initialize video file track
         try:
-            video_track = VideoFileTrack("ForBiggerEscapes.mp4")
-            client.video_track = video_track
+            camera_track = CameraVideoTrack(camera_id=0)
+            client.camera_track = camera_track
         except Exception as e:
-            logger.error(f"Failed to initialize video file: {e}")
-            raise HTTPException(status_code=500, detail=f"Video file initialization failed: {e}")
+            logger.error(f"Failed to initialize camera: {e}")
+            raise HTTPException(status_code=500, detail=f"Camera initialization failed: {e}")
         
-        # Create relay and processed track
-        relayed_track = connection_manager.media_relay.subscribe(video_track)
+        relayed_track = connection_manager.media_relay.subscribe(camera_track)
         processed_track = ProcessedVideoTrack(relayed_track, detector, client_id)
         client.processed_track = processed_track
         
         pc.addTrack(processed_track)
         logger.info(f"[{client_id}] Added processed video track")
         
-        # Handle the offer
         await pc.setRemoteDescription(
             RTCSessionDescription(sdp=offer_request.sdp, type=offer_request.type)
         )
@@ -538,7 +527,7 @@ async def get_active_streams():
             "client_id": client_id,
             "connected_at": client.created_at,
             "connection_state": client.peer_connection.connectionState,
-            "has_video": client.video_track is not None,
+            "has_camera": client.camera_track is not None,
             "latest_detection": detection_data
         })
     
