@@ -33,21 +33,7 @@ import uvicorn
 from dotenv import load_dotenv
 
 from person_detector import PersonDetector
-
-# Find and load .env file from project root
-current_dir = Path(__file__).resolve().parent
-root_dir = current_dir.parent
-
-env_loaded = False
-for env_path in [current_dir / '.env', root_dir / '.env', Path('.env')]:
-    if env_path.exists():
-        load_dotenv(env_path)
-        env_loaded = True
-        print(f"Loaded .env from: {env_path}")
-        break
-
-if not env_loaded:
-    print("Warning: No .env file found. Using default values.")
+import config  # Centralized configuration
 
 # Configure logging
 logging.basicConfig(
@@ -56,41 +42,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Print configuration on startup
+config.print_config()
+
 # ============================================================================
 # Configuration
 # ============================================================================
 
-# Default TURN/STUN configuration from environment (can be overridden by frontend)
-STUN_URL = os.getenv("STUN_URL", "stun:stun.cloudflare.com:3478")
-TURN_URLS_STR = os.getenv("TURN_URLS", "")
-TURN_USERNAME = os.getenv("TURN_USERNAME", "")
-TURN_CREDENTIAL = os.getenv("TURN_CREDENTIAL", "")
+# Use simplified CORS for development
+CORS_ORIGINS = ["*"]
 
-if TURN_URLS_STR:
-    TURN_URLS = [url.strip() for url in TURN_URLS_STR.split(",") if url.strip()]
-else:
-    TURN_URLS = [
-        "turn:turn.cloudflare.com:3478?transport=udp",
-        "turn:turn.cloudflare.com:3478?transport=tcp",
-        "turn:turn.cloudflare.com:80?transport=tcp",
-        "turns:turn.cloudflare.com:443?transport=tcp"
-    ]
-
-# Initialize default RTCConfiguration
+# Initialize default RTCConfiguration from centralized config
 rtc_configuration = RTCConfiguration(
     iceServers=[
-        RTCIceServer(urls=[STUN_URL]),
-        RTCIceServer(
-            urls=TURN_URLS,
-            username=TURN_USERNAME,
-            credential=TURN_CREDENTIAL
-        )
+        RTCIceServer(urls=[config.STUN_URL]),
     ]
 )
 
-logger.info("Backend initialized with default ICE configuration")
-logger.info(f"Default STUN: {STUN_URL}")
-logger.info(f"Default TURN endpoints: {len(TURN_URLS)}")
+# Only add TURN servers if credentials are provided
+if config.TURN_USERNAME and config.TURN_CREDENTIAL:
+    rtc_configuration.iceServers.append(
+        RTCIceServer(
+            urls=config.TURN_URLS,
+            username=config.TURN_USERNAME,
+            credential=config.TURN_CREDENTIAL
+        )
+    )
+
+logger.info("Backend initialized with ICE configuration")
+logger.info(f"STUN Server: {config.STUN_URL}")
+if config.TURN_URLS:
+    logger.info(f"TURN endpoints: {len(config.TURN_URLS)}")
 
 # ============================================================================
 # Data Models
@@ -100,10 +82,14 @@ class OfferRequest(BaseModel):
     sdp: str
     type: str
     client_id: str
+    source: str = "file"  # "camera" or "file"
+    video_path: Optional[str] = None  # Path to video file if source is "file"
+    camera_id: int = 0  # Camera ID if source is "camera"
+    loop_video: bool = True  # Whether to loop video file
 
 class StreamStartRequest(BaseModel):
     client_id: str
-    camera_id: int = 0
+    video_path: str = "ForBiggerEscapes.mp4"
 
 class DetectionData(BaseModel):
     client_id: str
@@ -117,33 +103,68 @@ class DetectionData(BaseModel):
 # Video Processing Track
 # ============================================================================
 
-class CameraVideoTrack(VideoStreamTrack):
-    """Video track that captures from camera"""
+class VideoFileTrack(VideoStreamTrack):
+    """Video track that reads from a video file"""
     
-    def __init__(self, camera_id: int = 0):
+    def __init__(self, video_path: str = None, loop: bool = True):
         super().__init__()
-        self.camera_id = camera_id
-        self.cap = cv2.VideoCapture(camera_id)
+        
+        # Use default video if none specified
+        if video_path is None:
+            video_path = config.DEFAULT_VIDEO_PATH
+        
+        self.video_path = video_path
+        self.loop = loop
         self.frame_count = 0
         
+        # Try to find the video file
+        if not os.path.exists(self.video_path):
+            # Try in upload folder
+            alt_path = os.path.join(config.UPLOAD_FOLDER, os.path.basename(self.video_path))
+            if os.path.exists(alt_path):
+                self.video_path = alt_path
+            else:
+                # Try default video
+                default_path = config.DEFAULT_VIDEO_PATH
+                if os.path.exists(default_path):
+                    logger.warning(f"Video file not found: {video_path}, using default: {default_path}")
+                    self.video_path = default_path
+                else:
+                    raise FileNotFoundError(f"Video file not found: {video_path}")
+        
+        self.cap = cv2.VideoCapture(self.video_path)
+        
         if not self.cap.isOpened():
-            raise RuntimeError(f"Could not open camera {camera_id}")
+            raise RuntimeError(f"Could not open video file: {self.video_path}")
         
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        # Get video properties
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS) or 30
+        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        logger.info(f"Camera {camera_id} initialized")
+        logger.info(f"Video file initialized: {self.video_path}")
+        logger.info(f"Video properties: {self.width}x{self.height} @ {self.fps}fps, {self.total_frames} frames")
         
     async def recv(self):
         pts, time_base = await self.next_timestamp()
         
         ret, frame = self.cap.read()
+        
+        # Loop the video when it ends
+        if not ret and self.loop:
+            logger.info("Video ended, restarting from beginning")
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = self.cap.read()
+            self.frame_count = 0
+        
         if not ret:
-            frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+            # If still can't read, create a black frame
+            frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         
         self.frame_count += 1
         
+        # Convert frame to VideoFrame
         video_frame = VideoFrame.from_ndarray(frame, format="bgr24")
         video_frame.pts = pts
         video_frame.time_base = time_base
@@ -153,7 +174,7 @@ class CameraVideoTrack(VideoStreamTrack):
     def stop(self):
         if self.cap:
             self.cap.release()
-            logger.info(f"Camera {self.camera_id} released")
+            logger.info(f"Video file {self.video_path} released")
 
 
 class ProcessedVideoTrack(VideoStreamTrack):
@@ -172,19 +193,27 @@ class ProcessedVideoTrack(VideoStreamTrack):
             frame = await self.track.recv()
             img = frame.to_ndarray(format="bgr24")
             
-            annotated_img, detection_summary = self.detector.process_video_frame(img)
+            # Only process detection if detector is available
+            if self.detector and self.detector.model:
+                # Process frame with person detection
+                annotated_img, detection_summary = self.detector.process_video_frame(img)
+                
+                self.frame_count += 1
+                detection_summary['frame_number'] = self.frame_count
+                detection_summary['client_id'] = self.client_id
+                self.last_detection_data = detection_summary
+                
+                if self.frame_count % 30 == 0:
+                    logger.info(
+                        f"[{self.client_id}] Frame {self.frame_count}: "
+                        f"{detection_summary['total_persons']} persons detected"
+                    )
+            else:
+                # If no detector, just pass through the frame
+                annotated_img = img
+                logger.warning(f"Detector not available for client {self.client_id}")
             
-            self.frame_count += 1
-            detection_summary['frame_number'] = self.frame_count
-            detection_summary['client_id'] = self.client_id
-            self.last_detection_data = detection_summary
-            
-            if self.frame_count % 30 == 0:
-                logger.info(
-                    f"[{self.client_id}] Frame {self.frame_count}: "
-                    f"{detection_summary['total_persons']} persons detected"
-                )
-            
+            # Create new video frame
             new_frame = VideoFrame.from_ndarray(annotated_img, format="bgr24")
             new_frame.pts = frame.pts
             new_frame.time_base = frame.time_base
@@ -193,7 +222,8 @@ class ProcessedVideoTrack(VideoStreamTrack):
             
         except Exception as e:
             logger.error(f"Error processing frame for {self.client_id}: {e}")
-            return frame
+            # Return the original frame on error
+            return await self.track.recv()
     
     def get_detection_data(self) -> Optional[dict]:
         return self.last_detection_data
@@ -207,7 +237,7 @@ class ProcessedVideoTrack(VideoStreamTrack):
 class ClientConnection:
     client_id: str
     peer_connection: RTCPeerConnection
-    camera_track: Optional[CameraVideoTrack] = None
+    video_track: Optional[VideoFileTrack] = None
     processed_track: Optional[ProcessedVideoTrack] = None
     websocket: Optional[WebSocket] = None
     created_at: float = None
@@ -235,8 +265,8 @@ class ConnectionManager:
     async def remove_client(self, client_id: str):
         client = self.clients.pop(client_id, None)
         if client:
-            if client.camera_track:
-                client.camera_track.stop()
+            if client.video_track:
+                client.video_track.stop()
             await client.peer_connection.close()
             logger.info(f"Client removed: {client_id}")
     
@@ -250,6 +280,10 @@ class ConnectionManager:
         logger.info(f"WebSocket disconnected. Total: {len(self.websockets)}")
     
     async def broadcast_detection_data(self, client_id: str, data: dict):
+        """Broadcast detection data to all connected WebSockets"""
+        if not data:
+            return
+            
         message = {
             "type": "detection_update",
             "client_id": client_id,
@@ -274,7 +308,8 @@ class ConnectionManager:
 # ============================================================================
 
 detector: Optional[PersonDetector] = None
-connection_manager = None
+connection_manager: Optional[ConnectionManager] = None
+broadcast_task: Optional[asyncio.Task] = None
 
 
 # ============================================================================
@@ -285,11 +320,12 @@ async def detection_broadcast_loop():
     """Periodically broadcast detection data to all connected WebSockets"""
     while True:
         try:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)  # Broadcast every 100ms
             
             if not connection_manager:
                 continue
             
+            # Broadcast detection data for each client
             for client_id, client in connection_manager.clients.items():
                 if client.processed_track:
                     detection_data = client.processed_track.get_detection_data()
@@ -300,6 +336,7 @@ async def detection_broadcast_loop():
                         )
                         
         except asyncio.CancelledError:
+            logger.info("Detection broadcast loop cancelled")
             break
         except Exception as e:
             logger.error(f"Error in detection broadcast loop: {e}")
@@ -312,28 +349,34 @@ async def detection_broadcast_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global detector, connection_manager
+    global detector, connection_manager, broadcast_task
     
     logger.info("Starting up WebRTC backend...")
+    
     try:
-        model_path = os.getenv("MODEL_PATH", "yolov8n.pt")
-        detector = PersonDetector(model_path, conf_threshold=0.5)
-        logger.info("Person detector initialized successfully")
+        # Initialize person detector
+        detector = PersonDetector(config.MODEL_PATH, conf_threshold=config.DETECTION_CONFIDENCE)
+        logger.info(f"Person detector initialized successfully with model: {config.MODEL_PATH}")
         
+        # Initialize connection manager
         connection_manager = ConnectionManager()
+        logger.info("Connection manager initialized")
         
+        # Start broadcast task
         broadcast_task = asyncio.create_task(detection_broadcast_loop())
         logger.info("Detection broadcast loop started")
         
     except Exception as e:
         logger.error(f"Failed to initialize: {e}")
         detector = None
+        connection_manager = None
     
     yield
     
+    # Shutdown
     logger.info("Shutting down WebRTC backend...")
     
-    if 'broadcast_task' in locals():
+    if broadcast_task:
         broadcast_task.cancel()
         try:
             await broadcast_task
@@ -348,14 +391,24 @@ async def lifespan(app: FastAPI):
     logger.info("Shutdown complete")
 
 
-app = FastAPI(title="WebRTC Person Detection Backend", lifespan=lifespan)
+# ============================================================================
+# FastAPI App
+# ============================================================================
 
+app = FastAPI(
+    title="WebRTC Person Detection Backend", 
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# Configure CORS - Allow all origins in development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allow all origins in development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ============================================================================
@@ -367,7 +420,9 @@ async def root():
     return {
         "message": "WebRTC Person Detection Backend",
         "status": "running",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "default_video": config.DEFAULT_VIDEO_FILE,
+        "detector_loaded": detector is not None and detector.model is not None
     }
 
 
@@ -375,75 +430,40 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "detector_loaded": detector is not None,
+        "detector_loaded": detector is not None and detector.model is not None,
         "active_clients": len(connection_manager.clients) if connection_manager else 0,
         "active_websockets": len(connection_manager.websockets) if connection_manager else 0,
         "timestamp": time.time()
     }
 
 
-@app.post("/ice-servers")
-async def receive_ice_servers(ice_config: dict):
-    """
-    Receive ICE server configuration from frontend
-    
-    Request body:
-    {
-        "iceServers": [
-            {"urls": ["stun:stun.cloudflare.com:3478"]},
-            {
-                "urls": ["turn:..."],
-                "username": "...",
-                "credential": "..."
-            }
-        ]
+@app.get("/config")
+async def get_config():
+    """Get client configuration"""
+    return {
+        "backend_url": config.BACKEND_URL,
+        "ws_url": config.BACKEND_WS_URL,
+        "rtc_url": config.RTC_URL,
+        "rtc_ws_url": config.RTC_WS_URL,
+        "default_video_source": config.DEFAULT_VIDEO_SOURCE,
+        "default_loop_video": config.DEFAULT_LOOP_VIDEO
     }
-    """
-    try:
-        global rtc_configuration
-        
-        ice_servers = []
-        for server in ice_config.get("iceServers", []):
-            urls = server.get("urls", [])
-            if isinstance(urls, str):
-                urls = [urls]
-            
-            username = server.get("username")
-            credential = server.get("credential")
-            
-            ice_server = RTCIceServer(
-                urls=urls,
-                username=username,
-                credential=credential
-            )
-            ice_servers.append(ice_server)
-        
-        rtc_configuration = RTCConfiguration(iceServers=ice_servers)
-        
-        logger.info(f"Received ICE servers configuration from frontend")
-        logger.info(f"ICE servers count: {len(ice_servers)}")
-        
-        return {
-            "status": "success",
-            "message": "ICE servers configuration received and applied",
-            "servers_count": len(ice_servers)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error processing ICE servers: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/offer")
 async def handle_offer(offer_request: OfferRequest):
     """Handle WebRTC offer from client"""
     try:
+        if not connection_manager:
+            raise HTTPException(status_code=503, detail="Connection manager not initialized")
+            
+        if not detector:
+            logger.warning("Detector not initialized, video will stream without detection")
+        
         client_id = offer_request.client_id
         logger.info(f"Received offer from client: {client_id}")
         
-        if detector is None:
-            raise HTTPException(status_code=503, detail="Detector not initialized")
-        
+        # Create peer connection
         pc = RTCPeerConnection(configuration=rtc_configuration)
         client = connection_manager.add_client(client_id, pc)
         
@@ -457,36 +477,62 @@ async def handle_offer(offer_request: OfferRequest):
         async def on_iceconnectionstatechange():
             logger.info(f"[{client_id}] ICE state: {pc.iceConnectionState}")
         
+        # Initialize video track based on source
         try:
-            camera_track = CameraVideoTrack(camera_id=0)
-            client.camera_track = camera_track
+            if offer_request.source == "file":
+                video_path = offer_request.video_path or config.DEFAULT_VIDEO_PATH
+                video_track = VideoFileTrack(video_path, loop=offer_request.loop_video)
+            else:
+                # Camera source not implemented in this version
+                raise HTTPException(status_code=501, detail="Camera source not implemented")
+            
+            client.video_track = video_track
+            logger.info(f"[{client_id}] Video track initialized")
+            
+        except FileNotFoundError as e:
+            logger.error(f"Video file not found: {e}")
+            await connection_manager.remove_client(client_id)
+            raise HTTPException(status_code=404, detail=str(e))
         except Exception as e:
-            logger.error(f"Failed to initialize camera: {e}")
-            raise HTTPException(status_code=500, detail=f"Camera initialization failed: {e}")
+            logger.error(f"Failed to initialize video track: {e}")
+            await connection_manager.remove_client(client_id)
+            raise HTTPException(status_code=500, detail=f"Video initialization failed: {e}")
         
-        relayed_track = connection_manager.media_relay.subscribe(camera_track)
-        processed_track = ProcessedVideoTrack(relayed_track, detector, client_id)
-        client.processed_track = processed_track
+        # Create relay and processed track
+        relayed_track = connection_manager.media_relay.subscribe(video_track)
         
-        pc.addTrack(processed_track)
-        logger.info(f"[{client_id}] Added processed video track")
+        # Only add processing if detector is available
+        if detector and detector.model:
+            processed_track = ProcessedVideoTrack(relayed_track, detector, client_id)
+            client.processed_track = processed_track
+            pc.addTrack(processed_track)
+            logger.info(f"[{client_id}] Added processed video track with detection")
+        else:
+            # Add raw video track without processing
+            pc.addTrack(relayed_track)
+            logger.warning(f"[{client_id}] Added video track without detection (detector not available)")
         
+        # Handle the offer
         await pc.setRemoteDescription(
             RTCSessionDescription(sdp=offer_request.sdp, type=offer_request.type)
         )
         
+        # Create and set answer
         answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
         
-        logger.info(f"[{client_id}] Created answer")
+        logger.info(f"[{client_id}] Created answer, WebRTC connection established")
         
         return {
             "sdp": pc.localDescription.sdp,
             "type": pc.localDescription.type,
             "client_id": client_id,
-            "status": "success"
+            "status": "success",
+            "detection_enabled": detector is not None and detector.model is not None
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error handling offer: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -494,6 +540,10 @@ async def handle_offer(offer_request: OfferRequest):
 
 @app.post("/stop-stream")
 async def stop_stream(client_id: str):
+    """Stop a specific stream"""
+    if not connection_manager:
+        raise HTTPException(status_code=503, detail="Connection manager not initialized")
+        
     client = connection_manager.get_client(client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -509,6 +559,10 @@ async def stop_stream(client_id: str):
 
 @app.get("/active-streams")
 async def get_active_streams():
+    """List all active streams"""
+    if not connection_manager:
+        return {"active_streams": [], "count": 0, "timestamp": time.time()}
+        
     streams = []
     for client_id, client in connection_manager.clients.items():
         detection_data = None
@@ -519,7 +573,8 @@ async def get_active_streams():
             "client_id": client_id,
             "connected_at": client.created_at,
             "connection_state": client.peer_connection.connectionState,
-            "has_camera": client.camera_track is not None,
+            "has_video": client.video_track is not None,
+            "has_detection": client.processed_track is not None,
             "latest_detection": detection_data
         })
     
@@ -532,12 +587,16 @@ async def get_active_streams():
 
 @app.get("/detection-data/{client_id}")
 async def get_detection_data(client_id: str):
+    """Get detection data for a specific client"""
+    if not connection_manager:
+        raise HTTPException(status_code=503, detail="Connection manager not initialized")
+        
     client = connection_manager.get_client(client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     if not client.processed_track:
-        return {"client_id": client_id, "data": None}
+        return {"client_id": client_id, "data": None, "message": "No detection available"}
     
     detection_data = client.processed_track.get_detection_data()
     return {
@@ -547,12 +606,44 @@ async def get_detection_data(client_id: str):
     }
 
 
+@app.get("/available-videos")
+async def get_available_videos():
+    """List available video files in the upload folder"""
+    upload_folder = Path(config.UPLOAD_FOLDER)
+    
+    if not upload_folder.exists():
+        return {"videos": [], "message": "Upload folder not found"}
+    
+    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv']
+    videos = []
+    
+    for video_file in upload_folder.iterdir():
+        if video_file.is_file() and video_file.suffix.lower() in video_extensions:
+            videos.append({
+                "filename": video_file.name,
+                "path": str(video_file),
+                "size_mb": round(video_file.stat().st_size / (1024 * 1024), 2)
+            })
+    
+    return {
+        "videos": videos,
+        "count": len(videos),
+        "upload_folder": str(upload_folder.absolute()),
+        "default_video": config.DEFAULT_VIDEO_FILE
+    }
+
+
 # ============================================================================
 # WebSocket Endpoint
 # ============================================================================
 
 @app.websocket("/ws/detection")
 async def websocket_detection_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time detection data"""
+    if not connection_manager:
+        await websocket.close(code=1003, reason="Service unavailable")
+        return
+        
     await connection_manager.add_websocket(websocket)
     
     try:
@@ -584,6 +675,7 @@ async def websocket_detection_endpoint(websocket: WebSocket):
                 await websocket.send_json({
                     "type": "status",
                     "active_clients": len(connection_manager.clients),
+                    "detector_loaded": detector is not None and detector.model is not None,
                     "timestamp": time.time()
                 })
                 
@@ -601,8 +693,8 @@ async def websocket_detection_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     uvicorn.run(
         "rtc_server:app",
-        host="0.0.0.0",
-        port=8000,
+        host=config.BACKEND_HOST,
+        port=config.RTC_PORT,
         reload=True,
         log_level="info"
     )
