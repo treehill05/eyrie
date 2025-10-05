@@ -10,6 +10,7 @@ import {
 	CheckCircle,
 	Search,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 
 function Counter({
@@ -135,21 +136,103 @@ export default function Page() {
 		},
 	];
 
+	const scrollToSection = (id: string) => {
+		const element = document.getElementById(id);
+		if (element) {
+			element.scrollIntoView({ behavior: "smooth", block: "start" });
+		}
+	};
+
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+			{/* Header */}
+			<header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 transition-all duration-300">
+				<div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-0 hover:opacity-100 transition-opacity duration-500" />
+				<div className="container mx-auto px-4 relative">
+					<div className="flex h-20 items-center justify-between">
+						{/* Logo Section with Enhanced Animation */}
+						<div className="group flex items-center gap-3 cursor-pointer">
+							<div className="relative">
+								{/* Animated glow background */}
+								<div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:blur-2xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
+
+								{/* Rotating ring effect */}
+								<div
+									className="absolute inset-0 w-10 h-10 border-2 border-primary/30 rounded-full animate-spin"
+									style={{ animationDuration: "8s" }}
+								/>
+
+								{/* Eye icon with enhanced styling */}
+								<div className="relative bg-gradient-to-br from-primary/20 to-primary/10 p-2 rounded-full border border-primary/30 group-hover:border-primary/50 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+									<Eye className="w-6 h-6 text-primary group-hover:scale-110 transition-transform duration-300" />
+								</div>
+							</div>
+
+							<div className="flex flex-col">
+								<span className="text-2xl font-bold bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent group-hover:from-primary group-hover:via-primary/90 group-hover:to-primary/70 transition-all duration-300 tracking-tight">
+									EYRIE
+								</span>
+								<span className="text-[0.6rem] font-medium text-muted-foreground/60 tracking-widest uppercase">
+									AI Crowd Intelligence
+								</span>
+							</div>
+						</div>
+
+						{/* Enhanced Navigation */}
+						<nav className="hidden md:flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => scrollToSection("hero")}
+								className="relative px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-300 group overflow-hidden rounded-lg"
+							>
+								<span className="relative z-10">Home</span>
+								<div className="absolute inset-0 bg-primary/5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+							</button>
+							<button
+								type="button"
+								onClick={() => scrollToSection("stats")}
+								className="relative px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-300 group overflow-hidden rounded-lg"
+							>
+								<span className="relative z-10">Impact</span>
+								<div className="absolute inset-0 bg-primary/5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+							</button>
+							<button
+								type="button"
+								onClick={() => scrollToSection("features")}
+								className="relative px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-300 group overflow-hidden rounded-lg"
+							>
+								<span className="relative z-10">Features</span>
+								<div className="absolute inset-0 bg-primary/5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+							</button>
+
+							{/* Separator */}
+							<div className="w-px h-6 bg-border/50 mx-2" />
+
+							{/* Enhanced CTA Button */}
+							<a
+								href="mailto:henry@lyra.so"
+								className="relative group px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 hover:scale-105"
+							>
+								<span className="relative z-10 flex items-center gap-2">
+									<span>Contact Us</span>
+									<Zap className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform duration-300" />
+								</span>
+								<div className="absolute inset-0 bg-gradient-to-r from-primary/80 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+								{/* Shimmer effect */}
+								<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+							</a>
+						</nav>
+					</div>
+				</div>
+			</header>
+
 			{/* Hero Section */}
-			<div className="relative overflow-hidden">
+			<div id="hero" className="relative overflow-hidden">
 				<div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
 				<div className="container mx-auto px-4 pt-20 pb-32">
 					<div
 						className={`max-w-4xl mx-auto text-center transition-all duration-1000 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
 					>
-						{/* Logo/Brand */}
-						<div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-primary/5 border border-primary/10">
-							<Eye className="w-5 h-5 text-primary" />
-							<span className="font-semibold text-primary">EYRIE</span>
-						</div>
-
 						{/* Main Headline */}
 						<h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
 							Preventing Crowd Crush
@@ -168,6 +251,7 @@ export default function Page() {
 
 						{/* CTA with Drone Selector */}
 						<div
+							id="cta"
 							className={`transition-all duration-1000 delay-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
 						>
 							<div className="mb-4">
@@ -189,6 +273,7 @@ export default function Page() {
 
 			{/* Stats Section */}
 			<div
+				id="stats"
 				className={`container mx-auto px-4 py-20 transition-all duration-1000 delay-500 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
 			>
 				<div className="max-w-6xl mx-auto">
@@ -255,6 +340,7 @@ export default function Page() {
 
 			{/* Features Section */}
 			<div
+				id="features"
 				className={`container mx-auto px-4 py-16 transition-all duration-1000 delay-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
 			>
 				<div className="max-w-6xl mx-auto">
