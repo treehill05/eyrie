@@ -26,13 +26,13 @@ export default function DisplaySwitch() {
 						value="points"
 						className="data-[state=on]:bg-gradient-to-br data-[state=on]:from-primary data-[state=on]:to-primary/90 data-[state=on]:text-primary-foreground transition-all duration-300 data-[state=on]:shadow-lg"
 					>
-						Points
+						Track
 					</ToggleGroupItem>
 					<ToggleGroupItem
 						value="heatmap"
 						className="data-[state=on]:bg-gradient-to-br data-[state=on]:from-primary data-[state=on]:to-primary/90 data-[state=on]:text-primary-foreground transition-all duration-300 data-[state=on]:shadow-lg"
 					>
-						Heat
+						Risk
 					</ToggleGroupItem>
 				</ToggleGroup>
 			</div>
