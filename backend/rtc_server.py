@@ -28,6 +28,8 @@ from aiortc.contrib.media import MediaRelay
 from av import VideoFrame
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+import config
 from pydantic import BaseModel
 import uvicorn
 from dotenv import load_dotenv
@@ -159,9 +161,14 @@ class VideoFileTrack(VideoStreamTrack):
             self.frame_count = 0
         
         if not ret:
-            # If still can't read, create a black frame
-            frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            logger.info("Video ended, restarting from beginning")
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = self.cap.read()
+            self.frame_count = 0
         
+        if not ret:
+            # If still can't read, create a black frame
+            frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)        
         self.frame_count += 1
         
         # Convert frame to VideoFrame
