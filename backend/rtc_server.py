@@ -603,9 +603,19 @@ async def handle_offer(offer_request: OfferRequest):
             client.processed_track = shared_processed_track
             logger.info(f"[{client_id}] Added shared processed video track with detection")
         else:
-            # Use the shared raw video track
-            relayed_track = connection_manager.media_relay.subscribe(shared_video_track)
-            logger.warning(f"[{client_id}] Added shared video track without detection (detector not available)")
+            # Create individual processed track for this client if detector is available
+            if detector and detector.model:
+                # Create a relay from the shared video track
+                relayed_video = connection_manager.media_relay.subscribe(shared_video_track)
+                # Create individual processed track that wraps the relayed video
+                client.processed_track = ProcessedVideoTrack(relayed_video, detector, client_id)
+                # Subscribe to the processed track for this client
+                relayed_track = connection_manager.media_relay.subscribe(client.processed_track)
+                logger.info(f"[{client_id}] Created individual processed track with detection")
+            else:
+                # Use the shared raw video track without detection
+                relayed_track = connection_manager.media_relay.subscribe(shared_video_track)
+                logger.warning(f"[{client_id}] Added video track without detection (detector not available)")
         
         pc.addTrack(relayed_track)
         
