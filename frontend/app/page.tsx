@@ -152,22 +152,6 @@ export default function Page() {
 					<div className="flex h-20 items-center justify-between">
 						{/* Logo Section with Enhanced Animation */}
 						<div className="group flex items-center gap-3 cursor-pointer">
-							<div className="relative">
-								{/* Animated glow background */}
-								<div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:blur-2xl group-hover:bg-primary/30 transition-all duration-500 animate-pulse" />
-
-								{/* Rotating ring effect */}
-								<div
-									className="absolute inset-0 w-10 h-10 border-2 border-primary/30 rounded-full animate-spin"
-									style={{ animationDuration: "8s" }}
-								/>
-
-								{/* Eye icon with enhanced styling */}
-								<div className="relative bg-gradient-to-br from-primary/20 to-primary/10 p-2 rounded-full border border-primary/30 group-hover:border-primary/50 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
-									<Eye className="w-6 h-6 text-primary group-hover:scale-110 transition-transform duration-300" />
-								</div>
-							</div>
-
 							<div className="flex flex-col">
 								<span className="text-2xl font-bold bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent group-hover:from-primary group-hover:via-primary/90 group-hover:to-primary/70 transition-all duration-300 tracking-tight">
 									EYRIE
