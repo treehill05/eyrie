@@ -152,6 +152,35 @@ export default function RTCProvider({
 					}
 				};
 
+				// Handle incoming data channel
+				pc.ondatachannel = (event) => {
+					console.log("Data channel received:", event.channel.label);
+					const dataChannel = event.channel;
+
+					dataChannel.onopen = () => {
+						console.log("Data channel opened");
+					};
+
+					dataChannel.onclose = () => {
+						console.log("Data channel closed");
+					};
+
+					dataChannel.onerror = (error) => {
+						console.error("Data channel error:", error);
+					};
+
+					dataChannel.onmessage = (event) => {
+						console.log("Data channel message received:", event.data);
+						try {
+							const data = JSON.parse(event.data);
+							console.log("Parsed data:", data);
+							addData(data);
+						} catch (error) {
+							console.error("Failed to parse data channel message:", error);
+						}
+					};
+				};
+
 				// Add transceivers for video (receive only, we don't send video)
 				pc.addTransceiver("video", { direction: "recvonly" });
 
@@ -202,7 +231,7 @@ export default function RTCProvider({
 				}
 			}
 		},
-		[iceServers, waitForIceGatheringComplete],
+		[iceServers, waitForIceGatheringComplete, addData],
 	);
 
 	const disconnect = useCallback(() => {
