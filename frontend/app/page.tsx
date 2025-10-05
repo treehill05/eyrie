@@ -89,14 +89,12 @@ export default function Page() {
 			suffix: "+",
 			label: "lives lost in India since 2000 across 50+ mass gatherings",
 			icon: AlertTriangle,
-			emoji: "🇮🇳",
 		},
 		{
 			value: "Increasing",
 			label:
 				"Frequency increasing — religious gatherings now the leading incident type",
 			icon: TrendingUp,
-			emoji: "📈",
 		},
 		{
 			value: "90%+",
@@ -105,7 +103,6 @@ export default function Page() {
 			label:
 				"of disasters could be prevented with proper crowd management strategies",
 			icon: CheckCircle,
-			emoji: "✅",
 		},
 		{
 			value: "10%",
@@ -114,7 +111,6 @@ export default function Page() {
 			label:
 				"Only 1 in 10 crowd injuries are officially documented — a hidden crisis",
 			icon: Search,
-			emoji: "🔍",
 		},
 	];
 
@@ -232,9 +228,6 @@ export default function Page() {
 								<div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 								<div className="relative z-10 flex flex-col space-y-4">
 									<div className="flex items-center gap-3">
-										<span className="text-3xl group-hover:scale-110 transition-transform duration-300">
-											{stat.emoji}
-										</span>
 										<div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
 											<stat.icon className="w-6 h-6 text-primary group-hover:scale-110 transition-transform duration-300" />
 										</div>
