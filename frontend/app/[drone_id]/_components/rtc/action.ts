@@ -42,7 +42,7 @@ async function getCloudflareCredentials(): Promise<CloudflareIceServer[]> {
 
 async function sendIceServersToBackend(iceServers: IceServer[]): Promise<void> {
 	const fastapiUrl =
-		process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+		process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8001";
 
 	try {
 		const response = await fetch(`${fastapiUrl}/ice-servers`, {

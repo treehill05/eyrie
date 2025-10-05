@@ -193,9 +193,9 @@ export default function RTCProvider({
 					throw new Error("Failed to create offer");
 				}
 
-				// Send offer to backend
+				// Send offer to backend (use RTC port 8001)
 				const backendUrl =
-					process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+					process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8001";
 				const response = await fetch(`${backendUrl}/offer`, {
 					method: "POST",
 					headers: {
@@ -205,6 +205,9 @@ export default function RTCProvider({
 						sdp: offer.sdp,
 						type: offer.type,
 						client_id: droneId,
+						source: "file",
+						video_path: "crowd-of-people-timelapse-SBV-304899215-preview.mp4",
+						loop_video: true,
 					}),
 				});
 

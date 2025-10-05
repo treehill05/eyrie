@@ -74,7 +74,7 @@ DEFAULT_CAMERA_ID = int(os.getenv("DEFAULT_CAMERA_ID", "0"))
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "upload")
 DEFAULT_VIDEO_FILE = os.getenv(
     "DEFAULT_VIDEO_FILE", 
-    "vecteezy_aerial-view-of-marathon-runners-on-the-streets-of-kyiv-ukraine_11539866.mp4"
+    "crowd-of-people-timelapse-SBV-304899215-preview.mp4"
 )
 DEFAULT_LOOP_VIDEO = os.getenv("DEFAULT_LOOP_VIDEO", "true").lower() == "true"
 
