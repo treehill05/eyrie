@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useMemo } from "react";
+import { BarChart3 } from "lucide-react";
 import {
 	Area,
 	AreaChart,
@@ -118,7 +119,7 @@ export default function Graph() {
 				<div className="max-w-md text-center space-y-5 relative z-10">
 					<div className="relative mx-auto w-24 h-24">
 						<div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-xl">
-							<span className="text-5xl">📊</span>
+							<BarChart3 className="w-12 h-12 text-primary" />
 						</div>
 						<div className="absolute inset-0 w-24 h-24 bg-primary/10 rounded-full blur-xl" />
 					</div>
@@ -145,7 +146,7 @@ export default function Graph() {
 			{/* Mock Data Badge */}
 			{isUsingMockData && (
 				<div className="relative bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/30 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-lg hover:shadow-xl transition-all duration-300">
-					<span className="text-lg">📊</span>
+					<BarChart3 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
 					<div className="flex-1">
 						<p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
 							Mock Data Mode
