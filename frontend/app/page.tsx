@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/correctness/useUniqueElementIds: biome ignored :D */
 "use client";
 
 import DroneForm from "./_components/drone-form";
@@ -10,7 +11,6 @@ import {
 	CheckCircle,
 	Search,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 
 function Counter({
