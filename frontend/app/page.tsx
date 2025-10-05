@@ -213,7 +213,7 @@ export default function Page() {
 			{/* Hero Section */}
 			<div id="hero" className="relative overflow-hidden">
 				<div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
-				<div className="container mx-auto px-4 pt-20 pb-32">
+				<div className="container mx-auto px-4 pt-32 pb-32">
 					<div
 						className={`max-w-4xl mx-auto text-center transition-all duration-1000 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
 					>
@@ -225,12 +225,10 @@ export default function Page() {
 						</h1>
 
 						{/* Pitch */}
-						<p className="text-xl md:text-2xl text-muted-foreground mb-12 leading-relaxed max-w-3xl mx-auto">
+						<p className="text-lg md:text-xl text-muted-foreground mb-20 leading-relaxed max-w-2xl mx-auto">
 							Eyrie uses AI-powered drones to monitor high-density gatherings in
 							real-time, predicting deadly crowd crush events before they occur
-							and giving authorities critical minutes to save lives. From
-							religious pilgrimages to concerts, protests, and stadium events
-							worldwide.
+							and giving authorities critical minutes to save lives.
 						</p>
 
 						{/* CTA with Drone Selector */}
