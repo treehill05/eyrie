@@ -5,7 +5,6 @@ Script to start RTC server for video streaming with person detection
 
 import os
 import sys
-import webbrowser
 import time
 from pathlib import Path
 import config  # Load centralized configuration
@@ -102,19 +101,6 @@ def main():
     print("=" * 60)
     print()
     
-    # Ask if user wants to open test client
-    try:
-        response = input("Open test client in browser? (y/n): ").lower()
-        if response == 'y':
-            test_client_path = Path("test_rtc_client.html").absolute()
-            webbrowser.open(f"file://{test_client_path}")
-            print("✓ Test client opened in browser")
-            time.sleep(2)
-    except KeyboardInterrupt:
-        print("\n\nCancelled by user")
-        sys.exit(0)
-    
-    print()
     print("🚀 Starting server...")
     print("   Press Ctrl+C to stop")
     print()
