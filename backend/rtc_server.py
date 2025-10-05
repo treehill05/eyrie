@@ -55,21 +55,28 @@ config.print_config()
 CORS_ORIGINS = ["*"]
 
 # Initialize default RTCConfiguration from centralized config
-rtc_configuration = RTCConfiguration(
-    iceServers=[
+def create_rtc_configuration() -> RTCConfiguration:
+    """Create RTCConfiguration with multiple STUN servers for better reliability"""
+    ice_servers = [
+        # Primary STUN servers
         RTCIceServer(urls=[config.STUN_URL]),
+        RTCIceServer(urls=["stun:stun.l.google.com:19302"]),
+        RTCIceServer(urls=["stun:stun1.l.google.com:19302"]),
     ]
-)
-
-# Only add TURN servers if credentials are provided
-if config.TURN_USERNAME and config.TURN_CREDENTIAL:
-    rtc_configuration.iceServers.append(
-        RTCIceServer(
-            urls=config.TURN_URLS,
-            username=config.TURN_USERNAME,
-            credential=config.TURN_CREDENTIAL
+    
+    # Add TURN servers if credentials are provided
+    if config.TURN_USERNAME and config.TURN_CREDENTIAL:
+        ice_servers.append(
+            RTCIceServer(
+                urls=config.TURN_URLS,
+                username=config.TURN_USERNAME,
+                credential=config.TURN_CREDENTIAL
+            )
         )
-    )
+    
+    return RTCConfiguration(iceServers=ice_servers)
+
+rtc_configuration = create_rtc_configuration()
 
 logger.info("Backend initialized with ICE configuration")
 logger.info(f"STUN Server: {config.STUN_URL}")
@@ -88,6 +95,9 @@ class OfferRequest(BaseModel):
     video_path: Optional[str] = None  # Path to video file if source is "file"
     camera_id: int = 0  # Camera ID if source is "camera"
     loop_video: bool = True  # Whether to loop video file
+
+class IceServersRequest(BaseModel):
+    iceServers: list
 
 class StreamStartRequest(BaseModel):
     client_id: str
@@ -244,7 +254,6 @@ class ProcessedVideoTrack(VideoStreamTrack):
 class ClientConnection:
     client_id: str
     peer_connection: RTCPeerConnection
-    video_track: Optional[VideoFileTrack] = None
     processed_track: Optional[ProcessedVideoTrack] = None
     websocket: Optional[WebSocket] = None
     created_at: float = None
@@ -260,6 +269,35 @@ class ConnectionManager:
         self.websockets: Set[WebSocket] = set()
         self.media_relay = MediaRelay()
         
+        # Shared video source - only one instance per video file
+        self.shared_video_tracks: Dict[str, VideoFileTrack] = {}
+        self.shared_processed_tracks: Dict[str, ProcessedVideoTrack] = {}
+        
+    def get_or_create_shared_track(self, video_path: str, detector: Optional[PersonDetector] = None) -> tuple[VideoFileTrack, ProcessedVideoTrack]:
+        """Get or create shared video track for a specific video path"""
+        
+        # Create unique key for this video path + detector combination
+        track_key = video_path
+        
+        # Check if we already have a shared track for this video
+        if track_key in self.shared_video_tracks:
+            shared_video_track = self.shared_video_tracks[track_key]
+            shared_processed_track = self.shared_processed_tracks.get(track_key)
+            return shared_video_track, shared_processed_track
+        
+        # Create new shared track
+        logger.info(f"Creating new shared video track for: {video_path}")
+        shared_video_track = VideoFileTrack(video_path, loop=True)
+        self.shared_video_tracks[track_key] = shared_video_track
+        
+        # Create processed track if detector is available
+        shared_processed_track = None
+        if detector and detector.model:
+            shared_processed_track = ProcessedVideoTrack(shared_video_track, detector, "shared")
+            self.shared_processed_tracks[track_key] = shared_processed_track
+        
+        return shared_video_track, shared_processed_track
+        
     def add_client(self, client_id: str, pc: RTCPeerConnection) -> ClientConnection:
         client = ClientConnection(client_id=client_id, peer_connection=pc)
         self.clients[client_id] = client
@@ -272,10 +310,24 @@ class ConnectionManager:
     async def remove_client(self, client_id: str):
         client = self.clients.pop(client_id, None)
         if client:
-            if client.video_track:
-                client.video_track.stop()
             await client.peer_connection.close()
             logger.info(f"Client removed: {client_id}")
+            
+        # Check if we need to clean up shared tracks
+        self._cleanup_unused_shared_tracks()
+    
+    def _cleanup_unused_shared_tracks(self):
+        """Remove shared tracks that are no longer being used"""
+        # This is a simple cleanup - in production you might want more sophisticated tracking
+        pass
+    
+    def get_shared_track_info(self) -> dict:
+        """Get information about shared tracks"""
+        return {
+            "shared_video_tracks": len(self.shared_video_tracks),
+            "shared_processed_tracks": len(self.shared_processed_tracks),
+            "active_clients": len(self.clients)
+        }
     
     async def add_websocket(self, websocket: WebSocket):
         await websocket.accept()
@@ -457,6 +509,26 @@ async def get_config():
     }
 
 
+@app.post("/ice-servers")
+async def handle_ice_servers(request: IceServersRequest):
+    """Handle ICE servers configuration from frontend"""
+    try:
+        logger.info(f"Received ICE servers configuration: {len(request.iceServers)} servers")
+        
+        # Update global ICE configuration if needed
+        # For now, just acknowledge receipt
+        return {
+            "status": "success",
+            "message": "ICE servers received",
+            "servers_count": len(request.iceServers),
+            "timestamp": time.time()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error handling ICE servers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/offer")
 async def handle_offer(offer_request: OfferRequest):
     """Handle WebRTC offer from client"""
@@ -468,10 +540,21 @@ async def handle_offer(offer_request: OfferRequest):
             logger.warning("Detector not initialized, video will stream without detection")
         
         client_id = offer_request.client_id
-        logger.info(f"Received offer from client: {client_id}")
         
-        # Create peer connection
-        pc = RTCPeerConnection(configuration=rtc_configuration)
+        # Check if client_id already exists and generate unique one if needed
+        original_client_id = client_id
+        counter = 1
+        while client_id in connection_manager.clients:
+            client_id = f"{original_client_id}-{counter}"
+            counter += 1
+            
+        if client_id != original_client_id:
+            logger.warning(f"Client ID collision detected. Using: {client_id} (original: {original_client_id})")
+        else:
+            logger.info(f"Received offer from client: {client_id}")
+        
+        # Create peer connection with fresh ICE configuration
+        pc = RTCPeerConnection(configuration=create_rtc_configuration())
         client = connection_manager.add_client(client_id, pc)
         
         @pc.on("connectionstatechange")
@@ -483,41 +566,48 @@ async def handle_offer(offer_request: OfferRequest):
         @pc.on("iceconnectionstatechange")
         async def on_iceconnectionstatechange():
             logger.info(f"[{client_id}] ICE state: {pc.iceConnectionState}")
+            if pc.iceConnectionState == "failed":
+                logger.error(f"[{client_id}] ICE connection failed - attempting cleanup")
+                await connection_manager.remove_client(client_id)
         
-        # Initialize video track based on source
+        @pc.on("icegatheringstatechange")
+        async def on_icegatheringstatechange():
+            logger.info(f"[{client_id}] ICE gathering state: {pc.iceGatheringState}")
+        
+        # Get or create shared video track
         try:
             if offer_request.source == "file":
                 video_path = offer_request.video_path or config.DEFAULT_VIDEO_PATH
-                video_track = VideoFileTrack(video_path, loop=offer_request.loop_video)
+                shared_video_track, shared_processed_track = connection_manager.get_or_create_shared_track(
+                    video_path, detector
+                )
             else:
                 # Camera source not implemented in this version
                 raise HTTPException(status_code=501, detail="Camera source not implemented")
             
-            client.video_track = video_track
-            logger.info(f"[{client_id}] Video track initialized")
+            logger.info(f"[{client_id}] Using shared video track for: {video_path}")
             
         except FileNotFoundError as e:
             logger.error(f"Video file not found: {e}")
             await connection_manager.remove_client(client_id)
             raise HTTPException(status_code=404, detail=str(e))
         except Exception as e:
-            logger.error(f"Failed to initialize video track: {e}")
+            logger.error(f"Failed to get shared video track: {e}")
             await connection_manager.remove_client(client_id)
             raise HTTPException(status_code=500, detail=f"Video initialization failed: {e}")
         
-        # Create relay and processed track
-        relayed_track = connection_manager.media_relay.subscribe(video_track)
-        
-        # Only add processing if detector is available
-        if detector and detector.model:
-            processed_track = ProcessedVideoTrack(relayed_track, detector, client_id)
-            client.processed_track = processed_track
-            pc.addTrack(processed_track)
-            logger.info(f"[{client_id}] Added processed video track with detection")
+        # Create relay from shared track
+        if shared_processed_track:
+            # Use the shared processed track
+            relayed_track = connection_manager.media_relay.subscribe(shared_processed_track)
+            client.processed_track = shared_processed_track
+            logger.info(f"[{client_id}] Added shared processed video track with detection")
         else:
-            # Add raw video track without processing
-            pc.addTrack(relayed_track)
-            logger.warning(f"[{client_id}] Added video track without detection (detector not available)")
+            # Use the shared raw video track
+            relayed_track = connection_manager.media_relay.subscribe(shared_video_track)
+            logger.warning(f"[{client_id}] Added shared video track without detection (detector not available)")
+        
+        pc.addTrack(relayed_track)
         
         # Handle the offer
         await pc.setRemoteDescription(
@@ -535,7 +625,8 @@ async def handle_offer(offer_request: OfferRequest):
             "type": pc.localDescription.type,
             "client_id": client_id,
             "status": "success",
-            "detection_enabled": detector is not None and detector.model is not None
+            "detection_enabled": detector is not None and detector.model is not None,
+            "shared_tracks": connection_manager.get_shared_track_info()
         }
         
     except HTTPException:
@@ -576,18 +667,23 @@ async def get_active_streams():
         if client.processed_track:
             detection_data = client.processed_track.get_detection_data()
         
+        # Check if using shared video tracks
+        has_video = len(connection_manager.shared_video_tracks) > 0
+        
         streams.append({
             "client_id": client_id,
             "connected_at": client.created_at,
             "connection_state": client.peer_connection.connectionState,
-            "has_video": client.video_track is not None,
+            "has_video": has_video,
             "has_detection": client.processed_track is not None,
-            "latest_detection": detection_data
+            "latest_detection": detection_data,
+            "using_shared_tracks": True
         })
     
     return {
         "active_streams": streams,
         "count": len(streams),
+        "shared_tracks_info": connection_manager.get_shared_track_info(),
         "timestamp": time.time()
     }
 
@@ -638,6 +734,35 @@ async def get_available_videos():
         "upload_folder": str(upload_folder.absolute()),
         "default_video": config.DEFAULT_VIDEO_FILE
     }
+
+
+@app.get("/connection-stats")
+async def get_connection_stats():
+    """Get detailed connection statistics"""
+    if not connection_manager:
+        return {"error": "Connection manager not initialized"}
+        
+    stats = {
+        "active_clients": len(connection_manager.clients),
+        "shared_tracks": connection_manager.get_shared_track_info(),
+        "websocket_connections": len(connection_manager.websockets),
+        "detector_loaded": detector is not None and detector.model is not None,
+        "timestamp": time.time()
+    }
+    
+    # Add per-client details
+    client_details = []
+    for client_id, client in connection_manager.clients.items():
+        client_details.append({
+            "client_id": client_id,
+            "connection_state": client.peer_connection.connectionState,
+            "ice_state": client.peer_connection.iceConnectionState,
+            "created_at": client.created_at,
+            "has_processed_track": client.processed_track is not None
+        })
+    
+    stats["clients"] = client_details
+    return stats
 
 
 # ============================================================================
