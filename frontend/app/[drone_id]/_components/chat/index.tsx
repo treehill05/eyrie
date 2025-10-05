@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { Send } from "lucide-react";
+import { Send, MessageCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +92,7 @@ export default function Chat() {
 							<div className="flex flex-col items-center justify-center h-full py-12 text-center space-y-4">
 								<div className="relative">
 									<div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-lg">
-										<span className="text-4xl">💬</span>
+										<MessageCircle className="w-10 h-10 text-primary" />
 									</div>
 									<div className="absolute inset-0 w-20 h-20 bg-primary/10 rounded-full blur-xl" />
 								</div>

@@ -2,6 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { Radio, AlertTriangle, Loader2, RotateCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useRTC } from "../rtc";
 import DisplaySwitch from "./display-switch";
 import VideoHeatmap from "./heatmap";
@@ -102,7 +104,7 @@ export default function Video() {
 								<div className="relative mx-auto w-16 h-16">
 									<div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
 									<div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
-										<span className="text-2xl">🛸</span>
+										<Radio className="w-8 h-8 text-primary" />
 									</div>
 								</div>
 								<div>
@@ -117,7 +119,7 @@ export default function Video() {
 							<div className="space-y-4">
 								<div className="relative mx-auto w-16 h-16">
 									<div className="w-16 h-16 rounded-full bg-gradient-to-br from-destructive/30 to-destructive/10 flex items-center justify-center border border-destructive/30">
-										<span className="text-2xl">⚠️</span>
+										<AlertTriangle className="w-8 h-8 text-destructive" />
 									</div>
 									<div className="absolute inset-0 w-16 h-16 bg-destructive/20 rounded-full blur-xl" />
 								</div>
@@ -125,9 +127,21 @@ export default function Video() {
 									<p className="text-destructive font-semibold text-lg mb-2">
 										Connection Error
 									</p>
-									<p className="text-white/80 text-sm bg-black/30 rounded-lg p-3 border border-destructive/20">
+									<p className="text-white/80 text-sm bg-black/30 rounded-lg p-3 border border-destructive/20 mb-4">
 										{error}
 									</p>
+									<Button
+										onClick={() => {
+											disconnect();
+											if (droneId) {
+												connect(droneId);
+											}
+										}}
+										className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+									>
+										<RotateCw className="w-4 h-4" />
+										Retry Connection
+									</Button>
 								</div>
 							</div>
 						)}
@@ -135,7 +149,7 @@ export default function Video() {
 							<div className="space-y-4">
 								<div className="relative mx-auto w-16 h-16">
 									<div className="w-16 h-16 rounded-full bg-gradient-to-br from-muted/30 to-muted/10 flex items-center justify-center border border-border/30">
-										<span className="text-2xl">⏳</span>
+										<Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
 									</div>
 								</div>
 								<p className="text-white font-medium">
