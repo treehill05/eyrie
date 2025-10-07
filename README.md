@@ -45,3 +45,10 @@ It helps authorities prevent crowd crush tragedies by providing critical minutes
 cd frontend
 pnpm install
 pnpm dev
+
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp config.env.example .env
+python start_servers.py
