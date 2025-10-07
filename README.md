@@ -1,8 +1,8 @@
 # Eyrie - Preventing Crowd Crush Before It Happens
 
-Best Design at PennApps XXVI🏆
+Best Use of Cloudflare at HackHarvard '25🏆
 
-!["preview"](assets/preview.png "Preview")
+!["landing_page"](image.png "landing_page")
 
 ![Python](https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![React](https://img.shields.io/badge/-React-61DAFB?style=flat-square&logo=react&logoColor=white)
