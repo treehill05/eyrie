@@ -22,7 +22,6 @@ A project built to monitor high-density gatherings in real-time, detect dangerou
 Eyrie automatically streams live video from drones, detects people using YOLOv8, calculates spatial density, and generates predictive alerts.
 It helps authorities prevent crowd crush tragedies by providing critical minutes to respond before disaster strikes.
 
-!["preview"](assets/dashboard.png "Preview")
 
 ## Features
 
@@ -33,7 +32,6 @@ It helps authorities prevent crowd crush tragedies by providing critical minutes
 * Live Visualization – Interactive overlays with tracking points, risk heatmaps, and time-series analytics graphs
 * Scalable Architecture – Supports multiple simultaneous drone feeds with shared video processing
 
-!["preview"](assets/analytics.png "Preview")
 
 ## Tech Stack
 
